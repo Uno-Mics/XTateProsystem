@@ -1,0 +1,139 @@
+/* 
+ * Real Estate Listing System
+ * Responsive Stylesheet
+ */
+
+/* Small devices (landscape phones, 576px and up) */
+@media (max-width: 576px) {
+    .hero {
+        height: 500px;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .hero-text {
+        font-size: 1rem;
+    }
+    
+    .search-form {
+        padding: 1.5rem;
+    }
+    
+    .property-slider {
+        height: 300px;
+    }
+    
+    .property-details-features .feature {
+        width: 100%;
+        margin-right: 0;
+    }
+    
+    .property-amenities li {
+        width: 100%;
+    }
+    
+    .stat-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .stat-icon {
+        margin-right: 0;
+        margin-bottom: 1rem;
+    }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .property-slider {
+        height: 350px;
+    }
+    
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .property-slider {
+        height: 400px;
+    }
+    
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 992px) {
+    .property-slider {
+        height: 500px;
+    }
+    
+    .dashboard-stats {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Message Responsiveness */
+@media (max-width: 991.98px) {
+    .conversation-list {
+        margin-bottom: 1.5rem;
+    }
+    
+    .message-container {
+        height: 500px;
+    }
+    
+    .conversation-list {
+        height: auto;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+}
+
+/* Form Responsiveness */
+@media (max-width: 767.98px) {
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .auth-form {
+        padding: 1.5rem;
+        margin: 2rem auto;
+    }
+}
+
+/* Table Responsiveness */
+@media (max-width: 767.98px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .property-image {
+        height: 180px;
+    }
+}
+
+/* Footer Responsiveness */
+@media (max-width: 767.98px) {
+    .footer {
+        text-align: center;
+    }
+    
+    .footer .text-md-end {
+        text-align: center !important;
+    }
+    
+    .social-icons {
+        justify-content: center;
+        display: flex;
+    }
+}
