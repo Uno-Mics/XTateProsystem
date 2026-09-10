@@ -18,10 +18,45 @@ $userId = $_SESSION['user_id'];
 
 // Handle requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle POST requests
+    // Support JSON payloads
+    $rawInput = file_get_contents('php://input');
+    if (!empty($rawInput)) {
+        $jsonData = json_decode($rawInput, true);
+        if (is_array($jsonData)) {
+            $_POST = array_merge($_POST, $jsonData);
+        }
+    }
+
     $action = isset($_POST['action']) ? $_POST['action'] : '';
 
-    if ($action === 'send_message') {
+    if ($action === 'delete_contact') {
+        $contactId = isset($_POST['contact_id']) ? intval($_POST['contact_id']) : 0;
+        header('Content-Type: application/json');
+
+        if ($contactId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid contact ID']);
+            exit;
+        }
+
+        $sql = "DELETE FROM contacts WHERE id = ?";
+        deleteData($sql, "i", [$contactId]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Contact message deleted successfully'
+        ]);
+        exit;
+    } else if ($action === 'update_contact_status') {
+        $contactId = isset($_POST['contact_id']) ? intval($_POST['contact_id']) : 0;
+        $status = isset($_POST['status']) ? sanitizeInput($_POST['status']) : 'read';
+        if ($contactId > 0 && in_array($status, ['read', 'unread'])) {
+            $sql = "UPDATE contacts SET status = ? WHERE id = ?";
+            updateData($sql, "si", [$status, $contactId]);
+        }
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true]);
+        exit;
+    } else if ($action === 'send_message') {
         // Send message to partner
         $receiverId = isset($_POST['receiver_id']) ? intval($_POST['receiver_id']) : 0;
         $message = isset($_POST['message']) ? trim($_POST['message']) : '';

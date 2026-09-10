@@ -4,6 +4,8 @@
  * Database Functions
  */
 
+require_once __DIR__ . '/firestore_db.php';
+
 // Create a database connection
 function connectDB() {
     // For development environment (XAMPP with MySQL)

@@ -55,11 +55,18 @@ try {
         property_id INT NOT NULL,
         buyer_id INT NOT NULL,
         created_at DATETIME NOT NULL,
+        is_viewed TINYINT(1) NOT NULL DEFAULT 0,
         UNIQUE KEY buyer_property (buyer_id, property_id)
     )";
     
     if (!$conn->query($createTableSQL)) {
         throw new Exception("Failed to create favorites table: " . $conn->error);
+    }
+
+    // Ensure is_viewed column exists
+    $colCheck = $conn->query("SHOW COLUMNS FROM favorites LIKE 'is_viewed'");
+    if ($colCheck && $colCheck->num_rows == 0) {
+        $conn->query("ALTER TABLE favorites ADD COLUMN is_viewed TINYINT(1) NOT NULL DEFAULT 0");
     }
     
     // Check if entry already exists
@@ -84,6 +91,23 @@ try {
         $stmt->bind_param("ii", $propertyId, $buyerId);
         
         if ($stmt->execute()) {
+            // Delete from Firestore
+            try {
+                if (file_exists(__DIR__ . '/../inc/firebase.php')) {
+                    require_once __DIR__ . '/../inc/firebase.php';
+                    $firestore = getFirestore();
+                    $docs = $firestore->collection('favorites')
+                        ->where('buyer_id', '=', (int)$buyerId)
+                        ->where('property_id', '=', (int)$propertyId)
+                        ->documents();
+                    foreach ($docs as $doc) {
+                        if ($doc->exists()) $doc->reference()->delete();
+                    }
+                }
+            } catch (Exception $fe) {
+                // ignore
+            }
+
             echo json_encode([
                 'success' => true,
                 'action' => 'removed',
@@ -95,11 +119,29 @@ try {
         $stmt->close();
     } 
     else if (($action === 'toggle' && !$isFavorited) || $action === 'add') {
-        // Add to favorites
-        $stmt = $conn->prepare("INSERT INTO favorites (property_id, buyer_id, created_at) VALUES (?, ?, NOW())");
+        // Add to favorites with is_viewed = 0
+        $stmt = $conn->prepare("INSERT INTO favorites (property_id, buyer_id, created_at, is_viewed) VALUES (?, ?, NOW(), 0) ON DUPLICATE KEY UPDATE is_viewed = 0");
         $stmt->bind_param("ii", $propertyId, $buyerId);
         
         if ($stmt->execute()) {
+            $_SESSION['unviewed_favorites_count'] = ($_SESSION['unviewed_favorites_count'] ?? 0) + 1;
+
+            // Sync to Firestore
+            try {
+                if (file_exists(__DIR__ . '/../inc/firebase.php')) {
+                    require_once __DIR__ . '/../inc/firebase.php';
+                    $firestore = getFirestore();
+                    $firestore->collection('favorites')->add([
+                        'buyer_id'    => (int)$buyerId,
+                        'property_id' => (int)$propertyId,
+                        'is_viewed'   => false,
+                        'created_at'  => date('Y-m-d H:i:s')
+                    ]);
+                }
+            } catch (Exception $fe) {
+                // ignore
+            }
+
             echo json_encode([
                 'success' => true,
                 'action' => 'added',

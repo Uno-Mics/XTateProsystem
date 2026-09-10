@@ -110,6 +110,18 @@ function registerUser($fullName, $email, $phone, $password, $role) {
     ]);
     
     if ($userId) {
+        // Sync immediately to Firebase Auth & Cloud Firestore
+        if (function_exists('firestore_sync_user')) {
+            firestore_sync_user($userId, [
+                'full_name'  => $fullName,
+                'email'      => $email,
+                'phone'      => $phone,
+                'role'       => $role,
+                'status'     => 'active',
+                'created_at' => date('Y-m-d H:i:s')
+            ], $password);
+        }
+
         return [
             'success' => true,
             'user_id' => $userId,
@@ -137,7 +149,43 @@ function registerUser($fullName, $email, $phone, $password, $role) {
 
 // Authenticate user
 function loginUser($email, $password) {
-    // Try to find user in database
+    // 1. Try Firebase Auth sign-in first
+    try {
+        $auth = getFirebaseAuth();
+        // Kreait Firebase Auth signInWithEmailAndPassword
+        $signInResult = $auth->signInWithEmailAndPassword($email, $password);
+        if ($signInResult) {
+            $userDoc = firestore_get_user_by_email($email);
+            if ($userDoc) {
+                startSession();
+                $_SESSION['user_id'] = $userDoc['id'];
+                $_SESSION['firebase_uid'] = $signInResult->firebaseUserId();
+                $_SESSION['user_name'] = $userDoc['full_name'];
+                $_SESSION['user_email'] = $userDoc['email'];
+                $_SESSION['user_role'] = $userDoc['role'];
+
+                return [
+                    'success' => true,
+                    'user' => [
+                        'id'    => $userDoc['id'],
+                        'name'  => $userDoc['full_name'],
+                        'email' => $userDoc['email'],
+                        'role'  => $userDoc['role']
+                    ],
+                    'message' => 'Login successful!'
+                ];
+            }
+        }
+    } catch (\Kreait\Firebase\Exception\Auth\InvalidPassword $e) {
+        return [
+            'success' => false,
+            'message' => 'Invalid email or password.'
+        ];
+    } catch (Exception $e) {
+        // Continue to MySQL/demo fallback if Firebase Auth not reached or other error
+    }
+
+    // 2. Try to find user in database (Fallback)
     $sql = "SELECT id, full_name, email, password, role, status FROM users WHERE email = ?";
     $user = fetchOne($sql, "s", [$email]);
     

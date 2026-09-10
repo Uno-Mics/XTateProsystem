@@ -250,10 +250,11 @@ function addFavorite() {
     error_log("Adding favorite: Property=$propertyId, User=$userId, Table=$tableToUse");
     
     try {
-        $sql = "INSERT INTO {$tableToUse} (property_id, buyer_id, created_at) VALUES (?, ?, NOW())";
+        $sql = "INSERT INTO {$tableToUse} (property_id, buyer_id, created_at, is_viewed) VALUES (?, ?, NOW(), 0) ON DUPLICATE KEY UPDATE is_viewed = 0";
         $result = insertData($sql, "ii", [$propertyId, $userId]);
         
         if ($result) {
+            $_SESSION['unviewed_favorites_count'] = ($_SESSION['unviewed_favorites_count'] ?? 0) + 1;
             echo json_encode([
                 'success' => true,
                 'message' => 'Property added to favorites'

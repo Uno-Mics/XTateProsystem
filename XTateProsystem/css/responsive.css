@@ -1,139 +1,192 @@
-/* 
- * Real Estate Listing System
- * Responsive Stylesheet
+/*
+ * XTate Prosystem — Responsive Stylesheet
+ * Phase 1: Modern Breakpoints for Bento Grid + Layout
  */
 
-/* Small devices (landscape phones, 576px and up) */
-@media (max-width: 576px) {
-    .hero {
-        height: 500px;
+
+/* ================================================================
+   SMALL — Mobile phones (< 576px)
+   ================================================================ */
+@media (max-width: 575.98px) {
+
+    /* Hero */
+    .hero { min-height: 520px; }
+    .hero-title { font-size: 1.85rem; letter-spacing: -0.02em; }
+    .hero-text { font-size: 0.95rem; }
+    .search-form { padding: 1.25rem 1rem; }
+
+    /* Property */
+    .property-slider { height: 260px; }
+    .property-details-features .feature { width: 100%; }
+    .property-amenities li { width: 100%; }
+
+    /* Bento Grid — stack all to 1 column */
+    .bento-grid,
+    .bento-grid-3,
+    .bento-grid-4,
+    .bento-grid-2 {
+        grid-template-columns: 1fr;
     }
-    
-    .hero-title {
-        font-size: 2rem;
+    .bento-col-1, .bento-col-2, .bento-col-3,
+    .bento-col-4, .bento-col-5, .bento-col-6,
+    .bento-col-7, .bento-col-8, .bento-col-9,
+    .bento-col-12 {
+        grid-column: span 1;
     }
-    
-    .hero-text {
-        font-size: 1rem;
-    }
-    
-    .search-form {
-        padding: 1.5rem;
-    }
-    
-    .property-slider {
-        height: 300px;
-    }
-    
-    .property-details-features .feature {
-        width: 100%;
-        margin-right: 0;
-    }
-    
-    .property-amenities li {
-        width: 100%;
-    }
-    
+    .bento-row-2, .bento-row-3 { grid-row: span 1; }
+
+    /* Stat cards */
     .stat-card {
-        flex-direction: column;
-        text-align: center;
+        flex-direction: row;
+        align-items: center;
     }
-    
-    .stat-icon {
-        margin-right: 0;
-        margin-bottom: 1rem;
-    }
-}
-
-/* Medium devices (tablets, 768px and up) */
-@media (min-width: 576px) and (max-width: 767.98px) {
-    .hero-title {
-        font-size: 2.5rem;
-    }
-    
-    .property-slider {
-        height: 350px;
-    }
-    
     .dashboard-stats {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+
+    /* Messages */
+    .conversation-list { height: auto; max-height: 280px; }
+    .message-container { height: 420px; }
+
+    /* Auth */
+    .auth-form { padding: 1.5rem 1.25rem; margin: 1.5rem auto; }
+
+    /* Contacts */
+    .contacts-container {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    .contacts-list {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+        height: 360px;
+    }
+
+    /* Navbar */
+    .xt-user-name { display: none !important; }
+}
+
+
+/* ================================================================
+   MEDIUM SMALL — Large phones / Landscape (576px – 767px)
+   ================================================================ */
+@media (min-width: 576px) and (max-width: 767.98px) {
+
+    .hero-title { font-size: 2.25rem; }
+    .property-slider { height: 320px; }
+
+    /* Bento Grid — 2 columns */
+    .bento-grid   { grid-template-columns: repeat(6, 1fr); }
+    .bento-grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .bento-grid-4 { grid-template-columns: repeat(2, 1fr); }
+
+    /* Reflow wide bento spans */
+    .bento-col-7, .bento-col-8, .bento-col-9, .bento-col-12 { grid-column: span 6; }
+    .bento-col-5, .bento-col-6 { grid-column: span 6; }
+    .bento-col-3, .bento-col-4 { grid-column: span 3; }
+
+    .dashboard-stats { grid-template-columns: repeat(2, 1fr); }
+    .property-image { height: 190px; }
+    .contacts-container {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    .contacts-list {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+        height: 380px;
     }
 }
 
-/* Large devices (desktops, 992px and up) */
+
+/* ================================================================
+   TABLET — (768px – 991px)
+   ================================================================ */
 @media (min-width: 768px) and (max-width: 991.98px) {
-    .property-slider {
+
+    .property-slider { height: 380px; }
+
+    /* Bento Grid — 8 of 12 columns */
+    .bento-grid   { grid-template-columns: repeat(8, 1fr); }
+    .bento-grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .bento-grid-4 { grid-template-columns: repeat(2, 1fr); }
+
+    /* Reflow bento span cols */
+    .bento-col-7, .bento-col-9, .bento-col-12 { grid-column: span 8; }
+    .bento-col-5, .bento-col-6 { grid-column: span 4; }
+    .bento-col-3 { grid-column: span 4; }
+
+    .dashboard-stats { grid-template-columns: repeat(2, 1fr); }
+
+    /* Messages */
+    .conversation-list { margin-bottom: 1.25rem; }
+    .message-container { height: 480px; }
+    .conversation-list { height: auto; max-height: 280px; overflow-y: auto; }
+
+    /* Contacts */
+    .contacts-container {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    .contacts-list {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
         height: 400px;
     }
-    
-    .dashboard-stats {
-        grid-template-columns: repeat(2, 1fr);
-    }
 }
 
-/* Extra large devices (large desktops, 1200px and up) */
-@media (min-width: 992px) {
-    .property-slider {
-        height: 500px;
-    }
-    
-    .dashboard-stats {
-        grid-template-columns: repeat(4, 1fr);
-    }
+
+/* ================================================================
+   DESKTOP — (992px – 1199px)
+   ================================================================ */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+
+    .property-slider { height: 460px; }
+    .bento-grid   { grid-template-columns: repeat(12, 1fr); }
+    .bento-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .bento-grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .dashboard-stats { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* Message Responsiveness */
-@media (max-width: 991.98px) {
-    .conversation-list {
-        margin-bottom: 1.5rem;
-    }
-    
-    .message-container {
-        height: 500px;
-    }
-    
-    .conversation-list {
-        height: auto;
-        max-height: 300px;
-        overflow-y: auto;
-    }
+
+/* ================================================================
+   LARGE DESKTOP — (≥ 1200px)
+   ================================================================ */
+@media (min-width: 1200px) {
+
+    .property-slider { height: 500px; }
+    .bento-grid   { grid-template-columns: repeat(12, 1fr); }
+    .bento-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .bento-grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .dashboard-stats { grid-template-columns: repeat(4, 1fr); }
+    .bento-stat-value { font-size: 2.25rem; }
 }
 
-/* Form Responsiveness */
+
+/* ================================================================
+   FORM RESPONSIVENESS
+   ================================================================ */
 @media (max-width: 767.98px) {
-    .form-group {
-        margin-bottom: 1rem;
-    }
-    
-    .auth-form {
-        padding: 1.5rem;
-        margin: 2rem auto;
-    }
+    .form-group { margin-bottom: 1rem; }
+    .auth-form { padding: 1.5rem; margin: 1.75rem auto; }
 }
 
-/* Table Responsiveness */
+
+/* ================================================================
+   TABLE RESPONSIVENESS
+   ================================================================ */
 @media (max-width: 767.98px) {
-    .table-responsive {
-        font-size: 0.875rem;
-    }
-    
-    .property-image {
-        height: 180px;
-    }
+    .table-responsive { font-size: 0.82rem; }
+    .property-image { height: 175px; }
 }
 
-/* Footer Responsiveness */
+
+/* ================================================================
+   FOOTER RESPONSIVENESS
+   ================================================================ */
 @media (max-width: 767.98px) {
-    .footer {
-        text-align: center;
-    }
-    
-    .footer .text-md-end {
-        text-align: center !important;
-    }
-    
-    .social-icons {
-        justify-content: center;
-        display: flex;
-    }
+    .footer { text-align: center; }
+    .footer .text-md-end { text-align: center !important; }
+    .social-icons { justify-content: center; display: flex; }
 }

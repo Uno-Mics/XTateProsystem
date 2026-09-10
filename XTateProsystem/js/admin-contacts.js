@@ -108,9 +108,28 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => console.error('Error:', error));
     });
 
-    // Delete button handler
-    document.querySelector('.delete-btn')?.addEventListener('click', function() {
-        if (!confirm('Are you sure you want to delete this message?')) return;
+    // Delete Modal handler
+    const deleteContactModalEl = document.getElementById('deleteContactModal');
+    const deleteContactModal = deleteContactModalEl ? new bootstrap.Modal(deleteContactModalEl) : null;
+
+    // Delete button handler - Open Modal
+    document.querySelector('.btn-delete-contact, .delete-btn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!currentContactId) return;
+        if (deleteContactModal) {
+            deleteContactModal.show();
+        }
+    });
+
+    // Confirm Delete in Modal
+    document.querySelector('.confirm-delete-contact')?.addEventListener('click', function() {
+        if (!currentContactId) return;
+
+        const idToDelete = currentContactId;
+        if (deleteContactModal) {
+            deleteContactModal.hide();
+        }
 
         fetch('../api/messages.php', {
             method: 'POST',
@@ -119,21 +138,39 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 action: 'delete_contact',
-                contact_id: currentContactId
+                contact_id: idToDelete
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const contactItem = document.querySelector(`[data-contact-id="${currentContactId}"]`);
+                const contactItem = document.querySelector(`[data-contact-id="${idToDelete}"]`);
                 if (contactItem) {
-                    contactItem.remove();
+                    contactItem.style.transition = 'all 0.3s ease';
+                    contactItem.style.opacity = '0';
+                    contactItem.style.transform = 'translateX(-20px)';
+                    setTimeout(() => contactItem.remove(), 300);
                 }
                 messagePlaceholder.style.display = 'flex';
                 messageContent.style.display = 'none';
                 currentContactId = null;
+
+                if (typeof Notyf !== 'undefined') {
+                    new Notyf().success('Contact message deleted successfully');
+                }
+            } else {
+                if (typeof Notyf !== 'undefined') {
+                    new Notyf().error(data.message || 'Failed to delete message');
+                } else {
+                    alert(data.message || 'Failed to delete message');
+                }
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            if (typeof Notyf !== 'undefined') {
+                new Notyf().error('An error occurred while deleting');
+            }
+        });
     });
 });

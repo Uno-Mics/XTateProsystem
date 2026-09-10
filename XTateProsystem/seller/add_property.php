@@ -8,6 +8,12 @@ checkPermission(['seller']);
 
 // Get seller data
 $sellerId = $_SESSION['user_id'];
+$sql = "SELECT * FROM users WHERE id = ?";
+$seller = fetchOne($sql, "i", [$sellerId]);
+
+// Counts for sidebar badges
+$pendingCount = getPendingInquiriesCount($sellerId);
+$unreadCount = getUnreadMessagesCount($sellerId);
 
 // Get property types for dropdown
 $propertyTypes = getPropertyTypes();
@@ -112,13 +118,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // If no errors, insert property
     if (empty($errors)) {
-        // Begin transaction
         $conn = connectDB();
         $conn->begin_transaction();
         
         try {
-            // Insert property
-            // Use direct insertion instead of prepared statement to avoid parameter binding issues
             $sql = "INSERT INTO properties (
                         seller_id, title, description, price, property_type_id, 
                         bedrooms, bathrooms, area, address, city, state, zip_code, 
@@ -160,30 +163,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Upload and save images
             $uploadDir = '../uploads/properties/';
-            
-            // Make sure the directory exists with proper permissions
             if (!file_exists($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
             }
             
-            // Check if directory was created successfully
-            if (!is_dir($uploadDir) || !is_writable($uploadDir)) {
-                // Try an alternative directory if creation failed
-                $uploadDir = 'uploads/properties/';
-                if (!file_exists($uploadDir)) {
-                    mkdir($uploadDir, 0755, true);
-                }
-                
-                // If still not available, create in the current directory
-                if (!is_dir($uploadDir) || !is_writable($uploadDir)) {
-                    $uploadDir = './uploads/';
-                    if (!file_exists($uploadDir)) {
-                        mkdir($uploadDir, 0755, true);
-                    }
-                }
-            }
-            
-            // Count uploaded images
             $totalImages = count($_FILES['property_images']['name']);
             $uploadedImages = 0;
             
@@ -191,44 +174,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($_FILES['property_images']['error'][$i] === UPLOAD_ERR_OK) {
                     $tempName = $_FILES['property_images']['tmp_name'][$i];
                     $originalName = $_FILES['property_images']['name'][$i];
-                    $fileSize = $_FILES['property_images']['size'][$i];
                     $fileType = $_FILES['property_images']['type'][$i];
                     
-                    // Check if file is an image
-                    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+                    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
                     if (!in_array($fileType, $allowedTypes)) {
                         continue;
                     }
                     
-                    // Generate unique filename
                     $extension = pathinfo($originalName, PATHINFO_EXTENSION);
                     $newFileName = $propertyId . '_' . uniqid() . '.' . $extension;
                     $targetPath = $uploadDir . $newFileName;
                     
-                    // Move uploaded file
                     if (move_uploaded_file($tempName, $targetPath)) {
-                        // Store the web-accessible path in the database
-                        // Extract just the filename
                         $filename = basename($targetPath);
-                        
-                        // Always store image paths consistently as /uploads/properties/filename
-                        // This makes it easier to reference them from any page
                         $dbImagePath = '/uploads/properties/' . $filename;
                         
-                        // Copy file to the root uploads directory for accessibility
-                        // This ensures images are available no matter where they are accessed from
-                        if (!is_dir('../uploads/properties')) {
-                            mkdir('../uploads/properties', 0777, true);
-                        }
-                        
-                        // Also make a copy to our Replit project root directory for web access
-                        copy($targetPath, '../uploads/properties/' . $filename);
-                        
-                        // Insert image record
                         $sql = "INSERT INTO property_images (property_id, image_path, is_primary, created_at) 
                                 VALUES (?, ?, ?, NOW())";
                         
-                        $isPrimary = ($uploadedImages === 0) ? 1 : 0; // First image is primary
+                        $isPrimary = ($uploadedImages === 0) ? 1 : 0;
                         
                         $stmt = $conn->prepare($sql);
                         $stmt->bind_param("isi", $propertyId, $dbImagePath, $isPrimary);
@@ -240,46 +204,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
-            // If no images were uploaded, rollback transaction
             if ($uploadedImages === 0) {
-                throw new Exception('Failed to upload property images');
+                throw new Exception('Failed to upload property images. Please ensure valid JPG, PNG, or WebP files are used.');
             }
             
-            // Commit transaction
             $conn->commit();
+            $success = 'Property published successfully!';
             
-            $success = 'Property added successfully!';
-            
-            // Clear form data
+            // Clear form
             $formData = [
-                'title' => '',
-                'description' => '',
-                'price' => '',
-                'property_type_id' => '',
-                'bedrooms' => '',
-                'bathrooms' => '',
-                'area' => '',
-                'address' => '',
-                'city' => '',
-                'state' => '',
-                'zip_code' => '',
-                'year_built' => '',
-                'garage' => 0,
-                'air_conditioning' => 0,
-                'swimming_pool' => 0,
-                'backyard' => 0,
-                'gym' => 0,
-                'fireplace' => 0,
-                'security_system' => 0,
-                'washer_dryer' => 0
+                'title' => '', 'description' => '', 'price' => '', 'property_type_id' => '',
+                'bedrooms' => '', 'bathrooms' => '', 'area' => '', 'address' => '',
+                'city' => '', 'state' => '', 'zip_code' => '', 'year_built' => '',
+                'garage' => 0, 'air_conditioning' => 0, 'swimming_pool' => 0,
+                'backyard' => 0, 'gym' => 0, 'fireplace' => 0,
+                'security_system' => 0, 'washer_dryer' => 0
             ];
         } catch (Exception $e) {
-            // Rollback transaction on error
             $conn->rollback();
             $errors[] = 'Error adding property: ' . $e->getMessage();
         }
         
-        // Close connection
         $conn->close();
     }
 }
@@ -287,300 +232,639 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 include '../inc/header.php';
 ?>
 
-<div class="container py-5">
-    <div class="row">
-        <!-- Sidebar -->
-        <div class="col-lg-3 mb-4">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Seller Dashboard</h5>
+<style>
+/* ============================================================
+   ADD PROPERTY — Modern Minimalist + Bento Grid
+   ============================================================ */
+
+.db-wrap {
+    background: #F8FAFC;
+    min-height: 100vh;
+    padding: 30px 0 70px;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.db-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 16px;
+    width: 100%;
+}
+
+.db-layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+/* ── Sidebar ── */
+.db-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.db-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.db-profile-card {
+    padding: 22px;
+    text-align: center;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+}
+
+.db-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    background: linear-gradient(135deg, #2563EB, #7C3AED);
+    color: #fff;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+.db-user-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0F172A;
+    margin: 0 0 4px;
+}
+
+.db-user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #059669;
+    background: #ECFDF5;
+    padding: 3px 10px;
+    border-radius: 100px;
+}
+
+/* Nav links */
+.db-nav-group {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.db-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: #64748B;
+    font-size: 0.88rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all .15s ease;
+}
+
+.db-nav-link:hover {
+    background: #F1F5F9;
+    color: #0F172A;
+}
+
+.db-nav-link.active {
+    background: #EFF6FF;
+    color: #2563EB;
+    font-weight: 600;
+}
+
+.db-nav-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: #EFF6FF;
+    color: #2563EB;
+    padding: 2px 8px;
+    border-radius: 100px;
+}
+.db-nav-badge--danger {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+
+/* ── Main Workspace ── */
+.db-main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+/* Header Banner */
+.db-hero-banner {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 24px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.db-hero-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #0F172A;
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+}
+
+.db-hero-sub {
+    font-size: 0.88rem;
+    color: #64748B;
+    margin: 0;
+}
+
+.db-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all .2s;
+    cursor: pointer;
+    border: none;
+}
+
+.db-btn-secondary {
+    background: #F8FAFC;
+    color: #475569;
+    border: 1px solid #E2E8F0;
+}
+
+.db-btn-secondary:hover {
+    background: #F1F5F9;
+    color: #0F172A;
+}
+
+.db-btn-primary {
+    background: #2563EB;
+    color: #FFFFFF;
+}
+
+.db-btn-primary:hover {
+    background: #1D4ED8;
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+    transform: translateY(-1px);
+}
+
+/* ── Bento Form Panels ── */
+.db-form-panel {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    margin-bottom: 20px;
+}
+
+.db-form-panel-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0F172A;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.db-label {
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.db-label .req { color: #DC2626; }
+
+.db-input,
+.db-select,
+.db-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #CBD5E1;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    color: #0F172A;
+    font-family: 'Inter', sans-serif;
+    transition: all .15s ease;
+    background: #FFFFFF;
+}
+
+.db-input:focus,
+.db-select:focus,
+.db-textarea:focus {
+    outline: none;
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Amenities Grid */
+.db-amenities-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.db-amenity-checkbox {
+    position: relative;
+}
+
+.db-amenity-checkbox input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.db-amenity-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    background: #F8FAFC;
+    color: #475569;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    user-select: none;
+}
+
+.db-amenity-checkbox input:checked + .db-amenity-label {
+    background: #EFF6FF;
+    border-color: #2563EB;
+    color: #2563EB;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+/* Upload zone */
+.db-upload-zone {
+    border: 2px dashed #CBD5E1;
+    border-radius: 14px;
+    padding: 32px 20px;
+    text-align: center;
+    background: #F8FAFC;
+    cursor: pointer;
+    transition: all .2s;
+}
+
+.db-upload-zone:hover {
+    border-color: #2563EB;
+    background: #EFF6FF;
+}
+
+/* ── Responsive ── */
+@media (max-width: 991.98px) {
+    .db-layout {
+        grid-template-columns: 1fr;
+    }
+    .db-amenities-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .db-wrap { padding: 18px 0 40px; }
+    .db-amenities-grid {
+        grid-template-columns: 1fr;
+    }
+    .db-hero-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<div class="db-wrap">
+    <div class="db-container">
+        <div class="db-layout">
+
+            <!-- ══════════ LEFT: SELLER SIDEBAR ══════════ -->
+            <aside class="db-sidebar">
+                <div class="db-card db-profile-card">
+                    <div class="db-avatar">
+                        <?= strtoupper(substr($seller['full_name'] ?? 'S', 0, 1)) ?>
+                    </div>
+                    <h3 class="db-user-name"><?= htmlspecialchars($seller['full_name']) ?></h3>
+                    <span class="db-user-badge">
+                        <i data-lucide="badge-check" style="width:13px;height:13px;"></i> Verified Seller
+                    </span>
                 </div>
-                <div class="list-group list-group-flush">
-                    <a href="dashboard.php" class="list-group-item list-group-item-action">
-                        <i class="fas fa-tachometer-alt me-2"></i> Dashboard
-                    </a>
-                    <a href="add_property.php" class="list-group-item list-group-item-action active">
-                        <i class="fas fa-plus-circle me-2"></i> Add Property
-                    </a>
-                    <a href="inquiries.php" class="list-group-item list-group-item-action">
-                        <i class="fas fa-envelope me-2"></i> Inquiries
-                        <?php
-                        // Get pending inquiries count
-                        $sql = "SELECT COUNT(*) as count FROM inquiries i 
-                               JOIN properties p ON i.property_id = p.id 
-                               WHERE p.seller_id = ? AND i.status = 'pending'";
-                        $pendingCount = fetchOne($sql, "i", [$sellerId])['count'];
-                        if ($pendingCount > 0):
-                        ?>
-                            <span class="badge bg-primary rounded-pill ms-1"><?= $pendingCount ?></span>
-                        <?php endif; ?>
-                    </a>
-                    <a href="messages.php" class="list-group-item list-group-item-action">
-                        <i class="fas fa-comments me-2"></i> Messages
-                        <?php 
-                        $unreadCount = getUnreadMessagesCount($sellerId);
-                        if ($unreadCount > 0): 
-                        ?>
-                            <span class="badge bg-danger rounded-pill ms-1"><?= $unreadCount ?></span>
-                        <?php endif; ?>
-                    </a>
-                    <a href="#" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#profileModal">
-                        <i class="fas fa-user-edit me-2"></i> Edit Profile
-                    </a>
+
+                <div class="db-card">
+                    <nav class="db-nav-group">
+                        <a href="dashboard.php" class="db-nav-link">
+                            <i data-lucide="layout-dashboard" style="width:17px;height:17px;"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="properties.php" class="db-nav-link">
+                            <i data-lucide="home" style="width:17px;height:17px;"></i>
+                            <span>My Properties</span>
+                        </a>
+                        <a href="add_property.php" class="db-nav-link active">
+                            <i data-lucide="plus-circle" style="width:17px;height:17px;"></i>
+                            <span>Add Property</span>
+                        </a>
+                        <a href="inquiries.php" class="db-nav-link">
+                            <i data-lucide="inbox" style="width:17px;height:17px;"></i>
+                            <span>Inquiries</span>
+                            <?php if ($pendingCount > 0): ?>
+                                <span class="db-nav-badge"><?= $pendingCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <a href="messages.php" class="db-nav-link">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
+                            <?php if ($unreadCount > 0): ?>
+                                <span class="db-nav-badge db-nav-badge--danger"><?= $unreadCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <a href="profile.php" class="db-nav-link">
+                            <i data-lucide="user-cog" style="width:17px;height:17px;"></i>
+                            <span>Edit Profile</span>
+                        </a>
+                    </nav>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Main Content -->
-        <div class="col-lg-9">
-            <div class="dashboard-header mb-4">
-                <h2 class="dashboard-title">Add New Property</h2>
-                <p class="dashboard-subtitle">Fill in the details to list your property</p>
-            </div>
-            
-            <?php if (!empty($errors)): ?>
-                <div class="alert alert-danger">
-                    <ul class="mb-0">
-                        <?php foreach ($errors as $error): ?>
-                            <li><?= $error ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            <?php endif; ?>
-            
-            <?php if (!empty($success)): ?>
-                <div class="alert alert-success">
-                    <?= $success ?>
-                    <p class="mb-0 mt-2">
-                        <a href="dashboard.php" class="btn btn-sm btn-primary">Back to Dashboard</a>
-                        <a href="add_property.php" class="btn btn-sm btn-outline-primary">Add Another Property</a>
-                    </p>
-                </div>
-            <?php endif; ?>
-            
-            <?php if (empty($success)): ?>
-                <div class="card">
-                    <div class="card-body">
-                        <form id="propertyForm" method="POST" action="<?= $_SERVER['PHP_SELF'] ?>" enctype="multipart/form-data">
-                            <!-- Basic Information -->
-                            <h4 class="mb-3">Basic Information</h4>
-                            <div class="row mb-4">
-                                <div class="col-md-12 mb-3">
-                                    <label for="title" class="form-label">Property Title <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="title" name="title" value="<?= $formData['title'] ?>" required>
-                                </div>
-                                
-                                <div class="col-md-12 mb-3">
-                                    <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
-                                    <textarea class="form-control" id="description" name="description" rows="5" required><?= $formData['description'] ?></textarea>
-                                </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label for="price" class="form-label">Price ($) <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" value="<?= $formData['price'] ?>" required>
-                                </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label for="property_type_id" class="form-label">Property Type <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="property_type_id" name="property_type_id" required>
-                                        <option value="">Select Property Type</option>
-                                        <?php foreach ($propertyTypes as $type): ?>
-                                            <option value="<?= $type['id'] ?>" <?= $formData['property_type_id'] == $type['id'] ? 'selected' : '' ?>><?= $type['name'] ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <!-- Property Features -->
-                            <h4 class="mb-3">Property Features</h4>
-                            <div class="row mb-4">
-                                <div class="col-md-3 mb-3">
-                                    <label for="bedrooms" class="form-label">Bedrooms <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="bedrooms" name="bedrooms" min="0" value="<?= $formData['bedrooms'] ?>" required>
-                                </div>
-                                
-                                <div class="col-md-3 mb-3">
-                                    <label for="bathrooms" class="form-label">Bathrooms <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="bathrooms" name="bathrooms" min="0" step="0.5" value="<?= $formData['bathrooms'] ?>" required>
-                                </div>
-                                
-                                <div class="col-md-3 mb-3">
-                                    <label for="area" class="form-label">Area (sqft) <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="area" name="area" min="0" value="<?= $formData['area'] ?>" required>
-                                </div>
-                                
-                                <div class="col-md-3 mb-3">
-                                    <label for="year_built" class="form-label">Year Built</label>
-                                    <input type="number" class="form-control" id="year_built" name="year_built" min="1800" max="<?= date('Y') ?>" value="<?= $formData['year_built'] ?>">
-                                </div>
-                                
-                                <div class="col-md-12 mb-3">
-                                    <label class="form-label">Amenities</label>
-                                    <div class="row">
-                                        <div class="col-md-3 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="garage" name="garage" value="1" <?= $formData['garage'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="garage">Garage</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="air_conditioning" name="air_conditioning" value="1" <?= $formData['air_conditioning'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="air_conditioning">Air Conditioning</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="swimming_pool" name="swimming_pool" value="1" <?= $formData['swimming_pool'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="swimming_pool">Swimming Pool</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="backyard" name="backyard" value="1" <?= $formData['backyard'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="backyard">Backyard</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="gym" name="gym" value="1" <?= $formData['gym'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="gym">Gym</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="fireplace" name="fireplace" value="1" <?= $formData['fireplace'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="fireplace">Fireplace</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="security_system" name="security_system" value="1" <?= $formData['security_system'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="security_system">Security System</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="washer_dryer" name="washer_dryer" value="1" <?= $formData['washer_dryer'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="washer_dryer">Washer/Dryer</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Location -->
-                            <h4 class="mb-3">Location</h4>
-                            <div class="row mb-4">
-                                <div class="col-md-12 mb-3">
-                                    <label for="address" class="form-label">Address <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="address" name="address" value="<?= $formData['address'] ?>" required>
-                                </div>
-                                
-                                <div class="col-md-4 mb-3">
-                                    <label for="city" class="form-label">City <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="city" name="city" value="<?= $formData['city'] ?>" required>
-                                </div>
-                                
-                                <div class="col-md-4 mb-3">
-                                    <label for="state" class="form-label">Country <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="state" name="state" value="<?= $formData['state'] ?>" required>
-                                </div>
-                                
-                                <div class="col-md-4 mb-3">
-                                    <label for="zip_code" class="form-label">Zip Code <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="zip_code" name="zip_code" value="<?= $formData['zip_code'] ?>" required>
-                                </div>
-                            </div>
-                            
-                            <!-- Images -->
-                            <h4 class="mb-3">Property Images <span class="text-danger">*</span></h4>
-                            <div class="row mb-4">
-                                <div class="col-md-12 mb-3">
-                                    <label for="property_images" class="form-label">Upload Images (Max 10 images, 5MB each)</label>
-                                    <input type="file" class="form-control" id="property_images" name="property_images[]" accept="image/jpeg, image/png, image/gif" multiple required>
-                                    <div class="form-text">First uploaded image will be set as the primary image.</div>
-                                </div>
-                                
-                                <div class="col-md-12">
-                                    <div class="row" id="imagePreviewContainer"></div>
-                                </div>
-                            </div>
-                            
-                            <!-- Submit Button -->
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg">Add Property</button>
-                            </div>
-                        </form>
+            </aside>
+
+            <!-- ══════════ RIGHT: BENTO WORKSPACE ══════════ -->
+            <main class="db-main">
+
+                <!-- Welcome Banner -->
+                <div class="db-hero-banner">
+                    <div>
+                        <h1 class="db-hero-title">Add New Property</h1>
+                        <p class="db-hero-sub">Fill in the specifications, details, and photos to list your property.</p>
+                    </div>
+                    <div>
+                        <a href="properties.php" class="db-btn db-btn-secondary">
+                            <i data-lucide="arrow-left" style="width:15px;height:15px;"></i> Back to Listings
+                        </a>
                     </div>
                 </div>
-            <?php endif; ?>
+
+                <?php if (!empty($errors)): ?>
+                    <div class="alert alert-danger" style="border-radius: 12px; border: 1px solid #FECACA; background: #FEF2F2; color: #991B1B;">
+                        <div class="d-flex align-items-center mb-2">
+                            <i data-lucide="alert-triangle" style="width:18px;height:18px;margin-right:8px;flex-shrink:0;"></i>
+                            <strong>Please fix the following issues:</strong>
+                        </div>
+                        <ul class="mb-0 ps-3">
+                            <?php foreach ($errors as $error): ?>
+                                <li><?= htmlspecialchars($error) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($success)): ?>
+                    <div class="alert alert-success d-flex align-items-center" style="border-radius: 12px; border: 1px solid #A7F3D0; background: #ECFDF5; color: #065F46;">
+                        <i data-lucide="check-circle" style="width:18px;height:18px;margin-right:8px;flex-shrink:0;"></i>
+                        <div>
+                            <strong><?= htmlspecialchars($success) ?></strong>
+                            <a href="properties.php" class="alert-link ms-2" style="color: #065F46; font-weight: 700;">View your listings →</a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" action="add_property.php" enctype="multipart/form-data" novalidate>
+
+                    <!-- Card 1: Basic Information -->
+                    <div class="db-form-panel">
+                        <h3 class="db-form-panel-title">
+                            <i data-lucide="info" style="width:18px;height:18px;color:#2563EB;"></i>
+                            Basic Information
+                        </h3>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="db-label" for="title">Property Title <span class="req">*</span></label>
+                                <input type="text" class="db-input" id="title" name="title" value="<?= htmlspecialchars($formData['title']) ?>" placeholder="e.g. Amber Abode — Luxury 4-Bedroom Villa" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="db-label" for="description">Detailed Description <span class="req">*</span></label>
+                                <textarea class="db-textarea" id="description" name="description" rows="4" placeholder="Describe the architectural style, natural light, neighbourhood highlights, and unique perks..." required><?= htmlspecialchars($formData['description']) ?></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="db-label" for="price">Price (USD) <span class="req">*</span></label>
+                                <input type="number" step="any" class="db-input" id="price" name="price" value="<?= htmlspecialchars($formData['price']) ?>" placeholder="e.g. 6500000" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="db-label" for="property_type_id">Property Type <span class="req">*</span></label>
+                                <select class="db-select" id="property_type_id" name="property_type_id" required>
+                                    <option value="">Select Property Type</option>
+                                    <?php foreach ($propertyTypes as $type): ?>
+                                        <option value="<?= $type['id'] ?>" <?= $formData['property_type_id'] == $type['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($type['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Specifications -->
+                    <div class="db-form-panel">
+                        <h3 class="db-form-panel-title">
+                            <i data-lucide="sliders" style="width:18px;height:18px;color:#2563EB;"></i>
+                            Property Specifications
+                        </h3>
+                        <div class="row g-3">
+                            <div class="col-md-3 col-6">
+                                <label class="db-label" for="bedrooms">Bedrooms <span class="req">*</span></label>
+                                <input type="number" class="db-input" id="bedrooms" name="bedrooms" value="<?= htmlspecialchars($formData['bedrooms']) ?>" min="0" placeholder="e.g. 4" required>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="db-label" for="bathrooms">Bathrooms <span class="req">*</span></label>
+                                <input type="number" class="db-input" id="bathrooms" name="bathrooms" value="<?= htmlspecialchars($formData['bathrooms']) ?>" min="0" placeholder="e.g. 3" required>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="db-label" for="area">Area (Sq. Ft.) <span class="req">*</span></label>
+                                <input type="number" step="any" class="db-input" id="area" name="area" value="<?= htmlspecialchars($formData['area']) ?>" min="0" placeholder="e.g. 3500" required>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="db-label" for="year_built">Year Built</label>
+                                <input type="number" class="db-input" id="year_built" name="year_built" value="<?= htmlspecialchars($formData['year_built']) ?>" min="1800" max="<?= date('Y') + 1 ?>" placeholder="e.g. <?= date('Y') ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Location Details -->
+                    <div class="db-form-panel">
+                        <h3 class="db-form-panel-title">
+                            <i data-lucide="map-pin" style="width:18px;height:18px;color:#2563EB;"></i>
+                            Location Details
+                        </h3>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="db-label" for="address">Street Address <span class="req">*</span></label>
+                                <input type="text" class="db-input" id="address" name="address" value="<?= htmlspecialchars($formData['address']) ?>" placeholder="e.g. 123 Crescent Ave" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="db-label" for="city">City <span class="req">*</span></label>
+                                <input type="text" class="db-input" id="city" name="city" value="<?= htmlspecialchars($formData['city']) ?>" placeholder="e.g. Cavite City" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="db-label" for="state">State / Province <span class="req">*</span></label>
+                                <input type="text" class="db-input" id="state" name="state" value="<?= htmlspecialchars($formData['state']) ?>" placeholder="e.g. Cavite" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="db-label" for="zip_code">ZIP Code <span class="req">*</span></label>
+                                <input type="text" class="db-input" id="zip_code" name="zip_code" value="<?= htmlspecialchars($formData['zip_code']) ?>" placeholder="e.g. 4100" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Amenities Bento Selection -->
+                    <div class="db-form-panel">
+                        <h3 class="db-form-panel-title">
+                            <i data-lucide="sparkles" style="width:18px;height:18px;color:#2563EB;"></i>
+                            Amenities & Features
+                        </h3>
+                        <div class="db-amenities-grid">
+                            <div class="db-amenity-checkbox">
+                                <input type="checkbox" id="garage" name="garage" value="1" <?= $formData['garage'] ? 'checked' : '' ?>>
+                                <label class="db-amenity-label" for="garage">
+                                    <i data-lucide="warehouse" style="width:16px;height:16px;"></i> Garage
+                                </label>
+                            </div>
+                            <div class="db-amenity-checkbox">
+                                <input type="checkbox" id="air_conditioning" name="air_conditioning" value="1" <?= $formData['air_conditioning'] ? 'checked' : '' ?>>
+                                <label class="db-amenity-label" for="air_conditioning">
+                                    <i data-lucide="fan" style="width:16px;height:16px;"></i> Air Conditioning
+                                </label>
+                            </div>
+                            <div class="db-amenity-checkbox">
+                                <input type="checkbox" id="swimming_pool" name="swimming_pool" value="1" <?= $formData['swimming_pool'] ? 'checked' : '' ?>>
+                                <label class="db-amenity-label" for="swimming_pool">
+                                    <i data-lucide="waves" style="width:16px;height:16px;"></i> Swimming Pool
+                                </label>
+                            </div>
+                            <div class="db-amenity-checkbox">
+                                <input type="checkbox" id="backyard" name="backyard" value="1" <?= $formData['backyard'] ? 'checked' : '' ?>>
+                                <label class="db-amenity-label" for="backyard">
+                                    <i data-lucide="trees" style="width:16px;height:16px;"></i> Backyard
+                                </label>
+                            </div>
+                            <div class="db-amenity-checkbox">
+                                <input type="checkbox" id="gym" name="gym" value="1" <?= $formData['gym'] ? 'checked' : '' ?>>
+                                <label class="db-amenity-label" for="gym">
+                                    <i data-lucide="dumbbell" style="width:16px;height:16px;"></i> Fitness Gym
+                                </label>
+                            </div>
+                            <div class="db-amenity-checkbox">
+                                <input type="checkbox" id="fireplace" name="fireplace" value="1" <?= $formData['fireplace'] ? 'checked' : '' ?>>
+                                <label class="db-amenity-label" for="fireplace">
+                                    <i data-lucide="flame" style="width:16px;height:16px;"></i> Fireplace
+                                </label>
+                            </div>
+                            <div class="db-amenity-checkbox">
+                                <input type="checkbox" id="security_system" name="security_system" value="1" <?= $formData['security_system'] ? 'checked' : '' ?>>
+                                <label class="db-amenity-label" for="security_system">
+                                    <i data-lucide="shield" style="width:16px;height:16px;"></i> Security System
+                                </label>
+                            </div>
+                            <div class="db-amenity-checkbox">
+                                <input type="checkbox" id="washer_dryer" name="washer_dryer" value="1" <?= $formData['washer_dryer'] ? 'checked' : '' ?>>
+                                <label class="db-amenity-label" for="washer_dryer">
+                                    <i data-lucide="shirt" style="width:16px;height:16px;"></i> Washer / Dryer
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 5: Media & Photos -->
+                    <div class="db-form-panel">
+                        <h3 class="db-form-panel-title">
+                            <i data-lucide="images" style="width:18px;height:18px;color:#2563EB;"></i>
+                            Property Photos <span class="req">*</span>
+                        </h3>
+                        <p style="font-size: 0.85rem; color: #64748B; margin-bottom: 16px;">
+                            Upload high-resolution property images. The first image uploaded will serve as the primary showcase photo.
+                        </p>
+                        
+                        <div class="db-upload-zone" onclick="document.getElementById('property_images').click();">
+                            <i data-lucide="upload-cloud" style="width:40px;height:40px;color:#2563EB;margin-bottom:8px;"></i>
+                            <div style="font-weight: 700; color: #0F172A; font-size: 0.95rem; margin-bottom: 4px;">
+                                Click or drag photos here to upload
+                            </div>
+                            <div style="font-size: 0.8rem; color: #94A3B8;">Supports JPG, PNG, WebP (Multiple selections allowed)</div>
+                            <input type="file" class="d-none" id="property_images" name="property_images[]" multiple accept="image/*" required>
+                        </div>
+                        <div id="fileListPreview" style="margin-top: 12px; font-size: 0.85rem; color: #475569;"></div>
+                    </div>
+
+                    <!-- Submit Bar -->
+                    <div class="d-flex justify-content-end gap-3" style="margin-top: 10px;">
+                        <a href="properties.php" class="db-btn db-btn-secondary" style="padding: 11px 22px;">Cancel</a>
+                        <button type="submit" class="db-btn db-btn-primary" style="padding: 11px 28px; font-size: 0.92rem;">
+                            <i data-lucide="check" style="width:16px;height:16px;"></i> Publish Property
+                        </button>
+                    </div>
+
+                </form>
+
+            </main>
+
         </div>
     </div>
 </div>
 
-<!-- Profile Modal -->
-<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="profileModalLabel">Edit Profile</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="profileForm" method="POST" action="../api/users.php">
-                    <input type="hidden" name="action" value="update_profile">
-                    
-                    <div class="mb-3">
-                        <label for="full_name" class="form-label">Full Name</label>
-                        <input type="text" class="form-control" id="full_name" name="full_name" value="<?= $_SESSION['user_name'] ?>" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email" name="email" value="<?= $_SESSION['user_email'] ?>" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="phone" class="form-label">Phone Number</label>
-                        <input type="tel" class="form-control" id="phone" name="phone" value="" required>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">Update Profile</button>
-                    </div>
-                </form>
-                
-                <hr>
-                
-                <form id="passwordForm" method="POST" action="../api/users.php">
-                    <input type="hidden" name="action" value="change_password">
-                    
-                    <div class="mb-3">
-                        <label for="current_password" class="form-label">Current Password</label>
-                        <input type="password" class="form-control" id="current_password" name="current_password" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="new_password" class="form-label">New Password</label>
-                        <input type="password" class="form-control" id="new_password" name="new_password" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="confirm_new_password" class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" id="confirm_new_password" name="confirm_new_password" required>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-outline-primary">Change Password</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
-<script src="../js/auth.js"></script>
-<script src="../js/property.js"></script>
+    // File preview
+    const fileInput = document.getElementById('property_images');
+    const preview = document.getElementById('fileListPreview');
+    if (fileInput && preview) {
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                preview.innerHTML = `<strong>Selected ${this.files.length} file(s):</strong> ` + 
+                    Array.from(this.files).map(f => f.name).join(', ');
+            } else {
+                preview.innerHTML = '';
+            }
+        });
+    }
+});
+</script>
 
 <?php include '../inc/footer.php'; ?>

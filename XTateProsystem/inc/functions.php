@@ -393,6 +393,122 @@ function getUnreadMessagesCount($userId) {
     return 0;
 }
 
+// Get pending inquiries count for seller
+function getPendingInquiriesCount($sellerId) {
+    if (!$sellerId) return 0;
+    try {
+        $sql = "SELECT COUNT(*) as count FROM inquiries i 
+                JOIN properties p ON i.property_id = p.id 
+                WHERE p.seller_id = ? AND i.status = 'pending'";
+        $result = fetchOne($sql, "i", [$sellerId]);
+        if ($result && isset($result['count'])) {
+            return (int)$result['count'];
+        }
+        return 0;
+    } catch (Exception $e) {
+        return 0;
+    }
+}
+
+// Get unviewed favorites count for a buyer
+function getUnviewedFavoritesCount($buyerId) {
+    if (!$buyerId) return 0;
+
+    // 1. Check MySQL
+    try {
+        $conn = connectDB();
+        if ($conn) {
+            $tableCheck = $conn->query("SHOW TABLES LIKE 'favorites'");
+            if ($tableCheck && $tableCheck->num_rows > 0) {
+                // Ensure is_viewed column exists
+                $colCheck = $conn->query("SHOW COLUMNS FROM favorites LIKE 'is_viewed'");
+                if ($colCheck && $colCheck->num_rows == 0) {
+                    $conn->query("ALTER TABLE favorites ADD COLUMN is_viewed TINYINT(1) NOT NULL DEFAULT 0");
+                }
+                closeDB($conn);
+
+                $sql = "SELECT COUNT(*) as count FROM favorites WHERE buyer_id = ? AND is_viewed = 0";
+                $result = fetchOne($sql, "i", [$buyerId]);
+                if ($result && isset($result['count'])) {
+                    return (int)$result['count'];
+                }
+            } else {
+                closeDB($conn);
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error in getUnviewedFavoritesCount (MySQL): " . $e->getMessage());
+    }
+
+    // 2. Firestore fallback
+    try {
+        if (function_exists('getFirestore')) {
+            $firestore = getFirestore();
+            $docs = $firestore->collection('favorites')
+                ->where('buyer_id', '=', (int)$buyerId)
+                ->where('is_viewed', '=', false)
+                ->documents();
+            $count = 0;
+            foreach ($docs as $doc) {
+                if ($doc->exists()) $count++;
+            }
+            return $count;
+        }
+    } catch (Exception $e) {
+        error_log("Error in getUnviewedFavoritesCount (Firestore): " . $e->getMessage());
+    }
+
+    return isset($_SESSION['unviewed_favorites_count']) ? (int)$_SESSION['unviewed_favorites_count'] : 0;
+}
+
+// Mark all favorites as viewed for a buyer
+function markFavoritesAsViewed($buyerId) {
+    if (!$buyerId) return;
+
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $_SESSION['unviewed_favorites_count'] = 0;
+        $_SESSION['favorites_last_viewed_at'] = date('Y-m-d H:i:s');
+    }
+
+    // 1. Update MySQL
+    try {
+        $conn = connectDB();
+        if ($conn) {
+            $tableCheck = $conn->query("SHOW TABLES LIKE 'favorites'");
+            if ($tableCheck && $tableCheck->num_rows > 0) {
+                $colCheck = $conn->query("SHOW COLUMNS FROM favorites LIKE 'is_viewed'");
+                if ($colCheck && $colCheck->num_rows == 0) {
+                    $conn->query("ALTER TABLE favorites ADD COLUMN is_viewed TINYINT(1) NOT NULL DEFAULT 0");
+                }
+                $conn->query("UPDATE favorites SET is_viewed = 1 WHERE buyer_id = " . intval($buyerId));
+            }
+            closeDB($conn);
+        }
+    } catch (Exception $e) {
+        error_log("Error in markFavoritesAsViewed (MySQL): " . $e->getMessage());
+    }
+
+    // 2. Update Firestore
+    try {
+        if (function_exists('getFirestore')) {
+            $firestore = getFirestore();
+            $docs = $firestore->collection('favorites')
+                ->where('buyer_id', '=', (int)$buyerId)
+                ->where('is_viewed', '=', false)
+                ->documents();
+            foreach ($docs as $doc) {
+                if ($doc->exists()) {
+                    $doc->reference()->update([
+                        ['path' => 'is_viewed', 'value' => true]
+                    ]);
+                }
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error in markFavoritesAsViewed (Firestore): " . $e->getMessage());
+    }
+}
+
 // Format message time
 function formatMessageTime($dateTime) {
     $timestamp = strtotime($dateTime);

@@ -121,15 +121,22 @@ switch ($action) {
             $stmt->bind_param("i", $userId);
             $stmt->execute();
 
-            // Finally, delete the user
+            // Finally, delete the user in MySQL
             $sql = "DELETE FROM users WHERE id = ?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("i", $userId);
             $stmt->execute();
 
-            // Commit transaction
+            // Commit MySQL transaction
             $conn->commit();
             closeDB($conn);
+
+            // Also delete from Cloud Firestore and Firebase Auth
+            try {
+                firestore_delete_user($userId);
+            } catch (Exception $fe) {
+                error_log("Firestore user deletion warning: " . $fe->getMessage());
+            }
 
             echo json_encode([
                 'success' => true,
@@ -164,6 +171,13 @@ switch ($action) {
             $result = updateData($sql, "si", [$status, $userId]);
 
             if ($result) {
+                // Sync to Firestore
+                try {
+                    firestore_update_user_status($userId, $status);
+                } catch (Exception $fe) {
+                    error_log("Firestore status update warning: " . $fe->getMessage());
+                }
+
                 echo json_encode([
                     'success' => true,
                     'message' => 'User status updated successfully'

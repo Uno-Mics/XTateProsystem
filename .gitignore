@@ -1,0 +1,14 @@
+# Credentials and keys
+credentials/
+*.json
+!composer.json
+
+# Vendor dependencies
+vendor/
+
+# Environment files
+.env
+.env.*
+
+# Uploads cache
+# uploads/properties/*

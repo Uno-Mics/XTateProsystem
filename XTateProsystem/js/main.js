@@ -336,15 +336,21 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             // Update button state
                             button.setAttribute('data-current-status', newStatus);
-                            button.textContent = newStatus === 'active' ? 'Deactivate Account' : 'Activate Account';
+                            button.innerHTML = `<i class="fas fa-power-off me-2"></i> ${newStatus === 'active' ? 'Deactivate Account' : 'Activate Account'}`;
 
                             // Find and update the status badge in the same row
                             const row = button.closest('tr');
-                            const statusBadge = row.querySelector('.badge');
+                            const statusBadge = row ? (row.querySelector('.status-chip') || row.querySelector('.badge')) : null;
 
                             // Update badge class and text
-                            statusBadge.className = `badge ${newStatus === 'active' ? 'bg-success' : 'bg-danger'}`;
-                            statusBadge.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+                            if (statusBadge) {
+                                if (statusBadge.classList.contains('status-chip')) {
+                                    statusBadge.className = `status-chip ${newStatus === 'active' ? 'status-chip--green' : 'status-chip--red'}`;
+                                } else {
+                                    statusBadge.className = `badge ${newStatus === 'active' ? 'bg-success' : 'bg-danger'}`;
+                                }
+                                statusBadge.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+                            }
 
                             // Show notification
                             const notification = document.createElement('div');
@@ -372,10 +378,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Delete confirmation
-    const deleteButtons = document.querySelectorAll('.delete-btn');
+    // Delete confirmation for native forms
+    const deleteButtons = document.querySelectorAll('.delete-btn:not(.btn-delete-contact)');
     deleteButtons.forEach(button => {
         button.addEventListener('click', function(e) {
+            if (button.classList.contains('btn-delete-contact') || button.closest('[data-bs-toggle="modal"]')) {
+                return;
+            }
             if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
                 e.preventDefault();
             }
