@@ -1,9 +1,4 @@
 <?php
-// Enable all error reporting for debugging
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 require_once '../inc/db.php';
 require_once '../inc/functions.php';
 require_once '../inc/auth.php';
@@ -13,11 +8,6 @@ startSession();
 
 // Set content type to JSON
 header('Content-Type: application/json');
-
-// Log request data
-error_log("Favorite API Request: " . $_SERVER['REQUEST_METHOD']);
-error_log("POST data: " . print_r($_POST, true));
-error_log("SESSION data: " . print_r($_SESSION, true));
 
 // Check if user is logged in and is a buyer
 if (!isLoggedIn()) {
@@ -63,6 +53,7 @@ try {
         property_id INT NOT NULL,
         buyer_id INT NOT NULL,
         created_at DATETIME NOT NULL,
+        is_viewed TINYINT(1) NOT NULL DEFAULT 0,
         UNIQUE KEY buyer_property (buyer_id, property_id)
     )";
     

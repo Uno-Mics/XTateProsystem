@@ -73,16 +73,15 @@ function firestore_get_properties($filters = []) {
                 }
             }
 
-            // Ensure primary_image compatibility
-            if (empty($data['primary_image'])) {
-                if (!empty($data['featured_image'])) {
-                    $data['primary_image'] = $data['featured_image'];
-                } elseif (!empty($data['images']) && is_array($data['images'])) {
-                    $data['primary_image'] = $data['images'][0]['image_path'] ?? $data['images'][0]['image_url'] ?? null;
+            // Normalize property data
+            $data = firestore_normalize_property($data);
+
+            // Auto-enrich from MySQL if area is 0 or missing
+            if ($data['area'] <= 0 && function_exists('connectDB')) {
+                $synced = firestore_sync_property($data['id']);
+                if ($synced && is_array($synced)) {
+                    $data = firestore_normalize_property($synced);
                 }
-            }
-            if (empty($data['area']) && isset($data['area_sqft'])) {
-                $data['area'] = $data['area_sqft'];
             }
 
             $results[] = $data;
@@ -104,6 +103,197 @@ function firestore_get_properties($filters = []) {
 }
 
 /**
+ * Normalize property data structure ensuring area, specs, and amenities consistency
+ */
+function firestore_normalize_property($data) {
+    if (!is_array($data)) {
+        return $data;
+    }
+
+    // Standardize area resolution
+    $area = 0;
+    if (isset($data['area']) && (float)$data['area'] > 0) {
+        $area = (float)$data['area'];
+    } elseif (isset($data['area_sqft']) && (float)$data['area_sqft'] > 0) {
+        $area = (float)$data['area_sqft'];
+    } elseif (isset($data['sqft']) && (float)$data['sqft'] > 0) {
+        $area = (float)$data['sqft'];
+    }
+    $data['area'] = $area;
+    $data['area_sqft'] = $area;
+    $data['sqft'] = $area;
+
+    // Normalize Year Built
+    if (!isset($data['year_built']) || empty($data['year_built']) || $data['year_built'] === 0 || $data['year_built'] === '0') {
+        $data['year_built'] = 'N/A';
+    }
+
+    // Normalize Amenities
+    $amenityKeys = [
+        'garage', 'air_conditioning', 'swimming_pool', 'backyard',
+        'gym', 'fireplace', 'security_system', 'washer_dryer'
+    ];
+    $amenitiesMap = is_array($data['amenities'] ?? null) ? $data['amenities'] : [];
+    foreach ($amenityKeys as $key) {
+        if (isset($data[$key])) {
+            $val = (int)$data[$key];
+        } elseif (isset($amenitiesMap[$key])) {
+            $val = (int)$amenitiesMap[$key];
+        } else {
+            $val = 0;
+        }
+        $data[$key] = $val;
+        $amenitiesMap[$key] = $val;
+    }
+    $data['amenities'] = $amenitiesMap;
+
+    // Ensure primary_image compatibility
+    if (empty($data['primary_image'])) {
+        if (!empty($data['featured_image'])) {
+            $data['primary_image'] = $data['featured_image'];
+        } elseif (!empty($data['images']) && is_array($data['images'])) {
+            $data['primary_image'] = $data['images'][0]['image_path'] ?? $data['images'][0]['image_url'] ?? null;
+        }
+    }
+
+    // Ensure property_type_name
+    if (empty($data['property_type_name'])) {
+        $data['property_type_name'] = $data['type_name'] ?? $data['property_type'] ?? 'Residential';
+    }
+
+    return $data;
+}
+
+/**
+ * Sync or create a property in Cloud Firestore from MySQL data or provided array
+ */
+function firestore_sync_property($propertyId, $propertyData = null) {
+    try {
+        $firestore = getFirestore();
+        $pId = (int)$propertyId;
+        if ($pId <= 0) return false;
+
+        $p = $propertyData;
+        if (empty($p) && function_exists('connectDB')) {
+            $conn = connectDB();
+            if ($conn) {
+                $stmt = $conn->prepare("SELECT p.*, pt.name as property_type_name 
+                                       FROM properties p 
+                                       LEFT JOIN property_types pt ON p.property_type_id = pt.id 
+                                       WHERE p.id = ?");
+                if ($stmt) {
+                    $stmt->bind_param("i", $pId);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    $p = $result->fetch_assoc();
+                    $stmt->close();
+                }
+
+                if ($p) {
+                    // Fetch images from MySQL
+                    $imgStmt = $conn->prepare("SELECT id, image_path, is_primary FROM property_images WHERE property_id = ? ORDER BY is_primary DESC, id ASC");
+                    if ($imgStmt) {
+                        $imgStmt->bind_param("i", $pId);
+                        $imgStmt->execute();
+                        $imgRes = $imgStmt->get_result();
+                        $images = [];
+                        while ($img = $imgRes->fetch_assoc()) {
+                            $images[] = [
+                                'id' => (int)$img['id'],
+                                'image_path' => $img['image_path'],
+                                'image_url' => $img['image_path'],
+                                'is_primary' => (bool)$img['is_primary']
+                            ];
+                        }
+                        $p['images'] = $images;
+                        $imgStmt->close();
+                    }
+                }
+            }
+        }
+
+        if (empty($p)) {
+            return false;
+        }
+
+        $areaVal = (float)($p['area'] ?? $p['area_sqft'] ?? $p['sqft'] ?? 0);
+        $typeName = $p['property_type_name'] ?? $p['type_name'] ?? $p['property_type'] ?? 'Residential';
+        $images = $p['images'] ?? [];
+        $primaryImage = null;
+        if (!empty($images) && is_array($images)) {
+            $primaryImage = $images[0]['image_path'] ?? $images[0]['image_url'] ?? null;
+        } elseif (!empty($p['primary_image'])) {
+            $primaryImage = $p['primary_image'];
+        } elseif (!empty($p['featured_image'])) {
+            $primaryImage = $p['featured_image'];
+        }
+
+        // Clean description of nested HTML entities if present
+        $cleanDescription = $p['description'] ?? '';
+        if (!empty($cleanDescription)) {
+            while (strpos($cleanDescription, '&amp;') !== false || strpos($cleanDescription, '&#') !== false) {
+                $cleanDescription = html_entity_decode($cleanDescription, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            }
+        }
+
+        $amenities = [
+            'garage'           => (int)($p['garage'] ?? 0),
+            'air_conditioning' => (int)($p['air_conditioning'] ?? 0),
+            'swimming_pool'    => (int)($p['swimming_pool'] ?? 0),
+            'backyard'         => (int)($p['backyard'] ?? 0),
+            'gym'              => (int)($p['gym'] ?? 0),
+            'fireplace'        => (int)($p['fireplace'] ?? 0),
+            'security_system'  => (int)($p['security_system'] ?? 0),
+            'washer_dryer'     => (int)($p['washer_dryer'] ?? 0),
+        ];
+
+        $docData = [
+            'id'               => $pId,
+            'seller_id'        => (int)($p['seller_id'] ?? 0),
+            'property_type_id' => (int)($p['property_type_id'] ?? 1),
+            'type_name'        => $typeName,
+            'property_type'    => $typeName,
+            'property_type_name' => $typeName,
+            'title'            => $p['title'] ?? '',
+            'description'      => $cleanDescription,
+            'price'            => (float)($p['price'] ?? 0),
+            'address'          => $p['address'] ?? '',
+            'city'             => $p['city'] ?? '',
+            'state'            => $p['state'] ?? '',
+            'zip_code'         => $p['zip_code'] ?? '',
+            'bedrooms'         => (int)($p['bedrooms'] ?? 0),
+            'bathrooms'        => (float)($p['bathrooms'] ?? 0),
+            'area'             => $areaVal,
+            'area_sqft'        => $areaVal,
+            'sqft'             => $areaVal,
+            'year_built'       => (!empty($p['year_built']) && $p['year_built'] !== 'N/A') ? (int)$p['year_built'] : 'N/A',
+            'status'           => $p['status'] ?? 'active',
+            'is_featured'      => (bool)($p['is_featured'] ?? 0),
+            'garage'           => $amenities['garage'],
+            'air_conditioning' => $amenities['air_conditioning'],
+            'swimming_pool'    => $amenities['swimming_pool'],
+            'backyard'         => $amenities['backyard'],
+            'gym'              => $amenities['gym'],
+            'fireplace'        => $amenities['fireplace'],
+            'security_system'  => $amenities['security_system'],
+            'washer_dryer'     => $amenities['washer_dryer'],
+            'amenities'        => $amenities,
+            'featured_image'   => $primaryImage,
+            'primary_image'    => $primaryImage,
+            'images'           => $images,
+            'created_at'       => $p['created_at'] ?? date('Y-m-d H:i:s'),
+            'updated_at'       => $p['updated_at'] ?? date('Y-m-d H:i:s')
+        ];
+
+        $firestore->collection('properties')->document((string)$pId)->set($docData, ['merge' => true]);
+        return $docData;
+    } catch (Exception $e) {
+        error_log("Error syncing property to Firestore #{$propertyId}: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Fetch a single property by ID from Firestore
  */
 function firestore_get_property_by_id($id) {
@@ -112,11 +302,31 @@ function firestore_get_property_by_id($id) {
     $snapshot = $docRef->snapshot();
 
     if (!$snapshot->exists()) {
+        // Fallback to sync from MySQL if available
+        if (function_exists('connectDB')) {
+            $synced = firestore_sync_property($id);
+            if ($synced && is_array($synced)) {
+                return firestore_normalize_property($synced);
+            }
+        }
         return null;
     }
 
     $data = $snapshot->data();
     $data['id'] = (int)($data['id'] ?? $snapshot->id());
+
+    // If area is 0 or amenities are missing in Firestore, auto-sync from MySQL
+    $hasAmenities = isset($data['garage']) || isset($data['amenities']);
+    $hasArea = (isset($data['area']) && (float)$data['area'] > 0) || 
+               (isset($data['area_sqft']) && (float)$data['area_sqft'] > 0);
+    if ((!$hasArea || !$hasAmenities || empty($data['year_built']) || $data['year_built'] === 'N/A') && function_exists('connectDB')) {
+        $synced = firestore_sync_property($id);
+        if ($synced && is_array($synced)) {
+            $data = $synced;
+        }
+    }
+
+    $data = firestore_normalize_property($data);
 
     // Populate seller information
     if (!empty($data['seller_id'])) {
@@ -136,9 +346,6 @@ function firestore_get_property_by_id($id) {
             $data['primary_image'] = $data['images'][0]['image_path'] ?? $data['images'][0]['image_url'] ?? null;
         }
     }
-    if (empty($data['area']) && isset($data['area_sqft'])) {
-        $data['area'] = $data['area_sqft'];
-    }
 
     // Populate property_type_name if not already present
     if (empty($data['property_type_name'])) {
@@ -156,14 +363,6 @@ function firestore_get_property_by_id($id) {
         } else {
             $data['property_type_name'] = 'Residential';
         }
-    }
-
-    // Provide default year_built and area if not set
-    if (!isset($data['year_built'])) {
-        $data['year_built'] = 'N/A';
-    }
-    if (!isset($data['area'])) {
-        $data['area'] = 0;
     }
 
     return $data;

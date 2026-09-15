@@ -463,7 +463,15 @@ include 'inc/header.php';
                                     <i data-lucide="map-pin" style="width:12px;height:12px;color:#2563EB;flex-shrink:0;"></i>
                                     <?= htmlspecialchars($p['city']) ?>, <?= htmlspecialchars($p['state']) ?>
                                 </div>
-                                <p class="sp-card-desc"><?= htmlspecialchars(substr($p['description'] ?? '', 0, 110)) ?>…</p>
+                                <?php 
+                                $desc = $p['description'] ?? '';
+                                while (strpos($desc, '&amp;') !== false || strpos($desc, '&#') !== false) {
+                                    $desc = html_entity_decode($desc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                                }
+                                $shortDesc = (strlen($desc) > 110) ? substr($desc, 0, 110) . '…' : $desc;
+                                $cardArea = (float)($p['area'] ?? $p['area_sqft'] ?? $p['sqft'] ?? 0);
+                                ?>
+                                <p class="sp-card-desc"><?= htmlspecialchars($shortDesc, ENT_QUOTES, 'UTF-8') ?></p>
                                 <div class="sp-card-specs">
                                     <div class="sp-spec">
                                         <i data-lucide="bed-double" style="width:12px;height:12px;color:#2563EB;"></i>
@@ -475,7 +483,7 @@ include 'inc/header.php';
                                     </div>
                                     <div class="sp-spec">
                                         <i data-lucide="maximize-2" style="width:12px;height:12px;color:#2563EB;"></i>
-                                        <?= number_format($p['area']) ?> sqft
+                                        <?= number_format($cardArea) ?> sqft
                                     </div>
                                 </div>
                             </div>

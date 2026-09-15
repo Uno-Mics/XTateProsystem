@@ -92,7 +92,7 @@ include '../inc/header.php';
                     </div>
                     <h3 class="db-user-name"><?= htmlspecialchars($adminName) ?></h3>
                     <span class="db-user-badge">
-                        <i data-lucide="shield" style="width:13px;height:13px;"></i> Super Admin
+                        <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Super Admin
                     </span>
                 </div>
 
@@ -113,6 +113,10 @@ include '../inc/header.php';
                             <i data-lucide="mail" style="width:17px;height:17px;"></i>
                             <span>Contacts</span>
                         </a>
+                        <a href="messages.php" class="db-nav-link">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
+                        </a>
                         <a href="users.php" class="db-nav-link active">
                             <i data-lucide="users" style="width:17px;height:17px;"></i>
                             <span>Users</span>
@@ -132,10 +136,10 @@ include '../inc/header.php';
                 <div class="db-hero-banner">
                     <div>
                         <h1 class="db-hero-title">Edit Buyer Profile</h1>
-                        <p class="db-hero-desc">Modify personal account information and details for this registered buyer</p>
+                        <p class="db-hero-sub">Modify personal account information and details for this registered buyer</p>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <a href="users.php" class="btn-top-link">
+                    <div class="db-hero-actions">
+                        <a href="users.php" class="db-btn db-btn-secondary">
                             <i data-lucide="arrow-left" style="width:15px;height:15px;"></i>
                             <span>Back to Users</span>
                         </a>

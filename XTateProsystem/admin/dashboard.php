@@ -470,6 +470,10 @@ include '../inc/header.php';
                             <i data-lucide="mail" style="width:17px;height:17px;"></i>
                             <span>Contacts</span>
                         </a>
+                        <a href="messages.php" class="db-nav-link">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
+                        </a>
                         <a href="users.php" class="db-nav-link">
                             <i data-lucide="users" style="width:17px;height:17px;"></i>
                             <span>Users</span>

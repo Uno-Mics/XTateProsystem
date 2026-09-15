@@ -233,7 +233,8 @@ include 'inc/header.php';
                             </div>
                             <div class="feature">
                                 <i data-lucide="maximize-2" style="width:13px;height:13px;"></i>
-                                <?= number_format($property['area']) ?> sqft
+                                <?php $idxArea = (float)($property['area'] ?? $property['area_sqft'] ?? $property['sqft'] ?? 0); ?>
+                                <?= number_format($idxArea) ?> sqft
                             </div>
                         </div>
                     </div>

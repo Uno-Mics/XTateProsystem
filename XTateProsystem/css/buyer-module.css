@@ -1,0 +1,473 @@
+/**
+ * XTate Prosystem — Buyer Module Shared Styles
+ * =============================================
+ * Shared design tokens for all buyer portal pages.
+ * Extracted from: dashboard.php, favorites.php, messages.php, profile.php
+ * DO NOT duplicate these classes inside individual page <style> blocks.
+ */
+
+/* -- Base Page Wrapper -- */
+.db-wrap {
+    background: #F8FAFC;
+    min-height: 100vh;
+    padding: 30px 0 70px;
+    width: 100%;
+    overflow-x: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #0F172A;
+}
+
+.db-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 16px;
+    width: 100%;
+}
+
+/* -- Two-Column Layout -- */
+.db-layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+/* -- Sidebar -- */
+.db-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.db-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.db-profile-card {
+    padding: 22px;
+    text-align: center;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+}
+
+.db-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    background: linear-gradient(135deg, #2563EB, #06B6D4);
+    color: #fff;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+.db-user-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0F172A;
+    margin: 0 0 4px;
+}
+
+.db-user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #059669;
+    background: #ECFDF5;
+    padding: 3px 10px;
+    border-radius: 100px;
+}
+
+/* -- Sidebar Navigation -- */
+.db-nav-group {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.db-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: #64748B;
+    font-size: 0.88rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all .15s ease;
+}
+
+.db-nav-link i,
+.db-nav-link svg {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+}
+
+.db-nav-link:hover {
+    background: #F1F5F9;
+    color: #0F172A;
+}
+
+.db-nav-link.active {
+    background: #EFF6FF;
+    color: #2563EB;
+    font-weight: 600;
+}
+
+.db-nav-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: #EFF6FF;
+    color: #2563EB;
+    padding: 2px 8px;
+    border-radius: 100px;
+}
+
+.db-nav-badge--danger {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+
+/* -- Main Workspace -- */
+.db-main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+/* -- Hero Banner -- */
+.db-hero-banner {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 24px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.db-hero-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #0F172A;
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+}
+
+/* Both .db-hero-sub and .db-hero-desc supported for compat */
+.db-hero-sub,
+.db-hero-desc {
+    color: #64748B;
+    font-size: 0.88rem;
+    margin: 0;
+}
+
+/* -- Action Buttons -- */
+.db-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all .2s;
+    cursor: pointer;
+    border: none;
+}
+
+.db-btn-primary {
+    background: #2563EB;
+    color: #FFFFFF;
+}
+
+.db-btn-primary:hover {
+    background: #1D4ED8;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    transform: translateY(-1px);
+}
+
+/* Alias for pages still using btn-db-action naming */
+.btn-db-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: all .15s ease;
+}
+
+.btn-db-action--primary {
+    background: #2563EB;
+    color: #FFFFFF;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.btn-db-action--primary:hover {
+    background: #1D4ED8;
+    color: #FFFFFF;
+    transform: translateY(-1px);
+}
+
+.btn-db-action--secondary {
+    background: #F1F5F9;
+    color: #334155;
+    border: 1px solid #E2E8F0;
+}
+
+.btn-db-action--secondary:hover {
+    background: #E2E8F0;
+    color: #0F172A;
+}
+
+/* -- Modern Alert Components -- */
+.modern-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    font-size: 0.88rem;
+}
+
+.modern-alert__content { flex: 1; }
+
+.modern-alert--success {
+    background: #F0FDF4;
+    border: 1px solid #86EFAC;
+    color: #166534;
+}
+
+.modern-alert--info {
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    color: #1E40AF;
+}
+
+.modern-alert--danger {
+    background: #FEF2F2;
+    border: 1px solid #FCA5A5;
+    color: #991B1B;
+}
+
+/* -- Property Cards -- */
+.db-pcard {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform .2s ease, box-shadow .2s ease;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.db-pcard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.db-pcard-img-wrap {
+    height: 200px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    background: #E2E8F0;
+    flex-shrink: 0;
+}
+
+.db-pcard-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .35s ease;
+}
+
+.db-pcard:hover .db-pcard-img-wrap img {
+    transform: scale(1.04);
+}
+
+.db-pcard-price {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 4px 10px;
+    border-radius: 8px;
+}
+
+.db-pcard-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.db-pcard-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.db-pcard-title a {
+    color: #0F172A;
+    text-decoration: none;
+    transition: color .15s ease;
+}
+
+.db-pcard-title a:hover { color: #2563EB; }
+
+.db-pcard-loc {
+    font-size: 0.78rem;
+    color: #64748B;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.db-pcard-specs {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-top: 10px;
+    border-top: 1px solid #F1F5F9;
+    font-size: 0.76rem;
+    color: #64748B;
+    margin-top: auto;
+}
+
+.db-pcard-spec-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* -- Property Grid -- */
+.db-props-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+/* -- Card Action Buttons -- */
+.db-pcard-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.btn-card-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all .15s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-card-action--view {
+    background: #EFF6FF;
+    color: #2563EB;
+}
+
+.btn-card-action--view:hover {
+    background: #DBEAFE;
+    color: #1D4ED8;
+}
+
+.btn-card-action--remove {
+    background: #FEF2F2;
+    color: #DC2626;
+}
+
+.btn-card-action--remove:hover {
+    background: #FEE2E2;
+    color: #B91C1C;
+}
+
+.btn-card-action--chat {
+    background: #F0FDF4;
+    color: #059669;
+}
+
+.btn-card-action--chat:hover {
+    background: #DCFCE7;
+    color: #047857;
+}
+
+/* -- Responsive Breakpoints -- */
+@media (max-width: 991.98px) {
+    .db-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .db-props-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .db-wrap {
+        padding: 18px 0 40px;
+    }
+
+    .db-props-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .db-hero-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

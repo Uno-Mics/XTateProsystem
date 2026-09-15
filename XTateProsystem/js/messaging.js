@@ -154,6 +154,13 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
+
+    // Activate WebSocket for real-time messaging (gracefully degrades to polling if WS unavailable)
+    try {
+        initializeWebSocket();
+    } catch (e) {
+        console.warn('WebSocket not available, using polling fallback:', e.message);
+    }
 });
 
 // Mark messages as read

@@ -134,13 +134,34 @@ if ($propsResult) {
 
         $propertyType = $propertyTypesMap[(string)$p['property_type_id']] ?? 'Residential';
 
+        $areaVal = (float)($p['area'] ?? $p['area_sqft'] ?? 0);
+        $cleanDesc = $p['description'] ?? '';
+        if (!empty($cleanDesc)) {
+            while (strpos($cleanDesc, '&amp;') !== false || strpos($cleanDesc, '&#') !== false) {
+                $cleanDesc = html_entity_decode($cleanDesc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            }
+        }
+
+        $amenities = [
+            'garage'           => (int)($p['garage'] ?? 0),
+            'air_conditioning' => (int)($p['air_conditioning'] ?? 0),
+            'swimming_pool'    => (int)($p['swimming_pool'] ?? 0),
+            'backyard'         => (int)($p['backyard'] ?? 0),
+            'gym'              => (int)($p['gym'] ?? 0),
+            'fireplace'        => (int)($p['fireplace'] ?? 0),
+            'security_system'  => (int)($p['security_system'] ?? 0),
+            'washer_dryer'     => (int)($p['washer_dryer'] ?? 0),
+        ];
+
         $propData = [
             'id'               => (int)$p['id'],
             'seller_id'        => (int)$p['seller_id'],
             'property_type_id' => (int)$p['property_type_id'],
             'type_name'        => $propertyType,
+            'property_type'    => $propertyType,
+            'property_type_name' => $propertyType,
             'title'            => $p['title'],
-            'description'      => $p['description'] ?? '',
+            'description'      => $cleanDesc,
             'price'            => (float)$p['price'],
             'address'          => $p['address'] ?? '',
             'city'             => $p['city'] ?? '',
@@ -148,10 +169,23 @@ if ($propsResult) {
             'zip_code'         => $p['zip_code'] ?? '',
             'bedrooms'         => (int)($p['bedrooms'] ?? 0),
             'bathrooms'        => (float)($p['bathrooms'] ?? 0),
-            'area_sqft'        => (float)($p['area_sqft'] ?? 0),
+            'area'             => $areaVal,
+            'area_sqft'        => $areaVal,
+            'sqft'             => $areaVal,
+            'year_built'       => (!empty($p['year_built']) && $p['year_built'] !== 'N/A') ? (int)$p['year_built'] : 'N/A',
             'status'           => $p['status'] ?? 'pending',
             'is_featured'      => (bool)($p['is_featured'] ?? 0),
+            'garage'           => $amenities['garage'],
+            'air_conditioning' => $amenities['air_conditioning'],
+            'swimming_pool'    => $amenities['swimming_pool'],
+            'backyard'         => $amenities['backyard'],
+            'gym'              => $amenities['gym'],
+            'fireplace'        => $amenities['fireplace'],
+            'security_system'  => $amenities['security_system'],
+            'washer_dryer'     => $amenities['washer_dryer'],
+            'amenities'        => $amenities,
             'featured_image'   => !empty($images) ? $images[0]['image_url'] : null,
+            'primary_image'    => !empty($images) ? $images[0]['image_url'] : null,
             'images'           => $images,
             'created_at'       => $p['created_at'] ?? date('Y-m-d H:i:s'),
             'updated_at'       => $p['updated_at'] ?? date('Y-m-d H:i:s')

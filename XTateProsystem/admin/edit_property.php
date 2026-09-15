@@ -73,6 +73,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image_action'])) {
 
             $conn->commit();
 
+            if (function_exists('firestore_sync_property')) {
+                firestore_sync_property($propertyId);
+            }
+
             echo json_encode(['success' => true, 'message' => ($action === 'delete') ? 'Image deleted successfully!' : 'Primary image set successfully!']);
             exit;
         } catch (Exception $e) {
@@ -271,6 +275,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['image_action'])) {
             $property = fetchOne("SELECT * FROM properties WHERE id = ?", "i", [$propertyId]);
             $propertyImages = fetchAll("SELECT * FROM property_images WHERE property_id = ? ORDER BY is_primary DESC, id ASC", "i", [$propertyId]);
 
+            // Sync updated property to Cloud Firestore
+            if (function_exists('firestore_sync_property')) {
+                firestore_sync_property($propertyId);
+            }
+
         } catch (Exception $e) {
             $conn->rollback();
             $errors[] = 'Error updating property: ' . $e->getMessage();
@@ -295,7 +304,7 @@ include '../inc/header.php';
                     </div>
                     <h3 class="db-user-name"><?= htmlspecialchars($adminName) ?></h3>
                     <span class="db-user-badge">
-                        <i data-lucide="shield" style="width:13px;height:13px;"></i> Super Admin
+                        <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Super Admin
                     </span>
                 </div>
 
@@ -316,6 +325,10 @@ include '../inc/header.php';
                             <i data-lucide="mail" style="width:17px;height:17px;"></i>
                             <span>Contacts</span>
                         </a>
+                        <a href="messages.php" class="db-nav-link">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
+                        </a>
                         <a href="users.php" class="db-nav-link">
                             <i data-lucide="users" style="width:17px;height:17px;"></i>
                             <span>Users</span>
@@ -335,14 +348,14 @@ include '../inc/header.php';
                 <div class="db-hero-banner">
                     <div>
                         <h1 class="db-hero-title">Edit Property Listing</h1>
-                        <p class="db-hero-desc">Update listing information, specifications, pricing, and photo gallery</p>
+                        <p class="db-hero-sub">Update listing information, specifications, pricing, and photo gallery</p>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <a href="../property_details.php?id=<?= $propertyId ?>" target="_blank" class="btn-top-action">
+                    <div class="db-hero-actions">
+                        <a href="../property_details.php?id=<?= $propertyId ?>" target="_blank" class="db-btn db-btn-secondary">
                             <i data-lucide="external-link" style="width:15px;height:15px;"></i>
                             <span>View Live</span>
                         </a>
-                        <a href="properties.php" class="btn-top-action">
+                        <a href="properties.php" class="db-btn db-btn-secondary">
                             <i data-lucide="arrow-left" style="width:15px;height:15px;"></i>
                             <span>All Properties</span>
                         </a>
@@ -430,7 +443,13 @@ include '../inc/header.php';
 
                                 <div class="form-group form-grid--full">
                                     <label for="description" class="form-label">Property Description <span class="req">*</span></label>
-                                    <textarea class="modern-textarea" id="description" name="description" rows="5" placeholder="Highlight key selling points, neighborhood atmosphere, views, finishes..." required><?= htmlspecialchars($property['description']) ?></textarea>
+                                    <?php 
+                                    $adminFormDesc = $property['description'] ?? '';
+                                    while (strpos($adminFormDesc, '&amp;') !== false || strpos($adminFormDesc, '&#') !== false) {
+                                        $adminFormDesc = html_entity_decode($adminFormDesc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                                    }
+                                    ?>
+                                    <textarea class="modern-textarea" id="description" name="description" rows="5" placeholder="Highlight key selling points, neighborhood atmosphere, views, finishes..." required><?= htmlspecialchars($adminFormDesc, ENT_QUOTES, 'UTF-8') ?></textarea>
                                 </div>
                             </div>
                         </div>
@@ -469,7 +488,7 @@ include '../inc/header.php';
                                     <label for="area" class="form-label">Area (sqft) <span class="req">*</span></label>
                                     <div class="input-with-icon">
                                         <i data-lucide="maximize-2" class="field-icon"></i>
-                                        <input type="number" class="modern-input has-icon" id="area" name="area" min="0" value="<?= htmlspecialchars($property['area']) ?>" placeholder="0" required>
+                                        <input type="number" step="any" class="modern-input has-icon" id="area" name="area" min="0" value="<?= htmlspecialchars($property['area']) ?>" placeholder="0" required>
                                     </div>
                                 </div>
 

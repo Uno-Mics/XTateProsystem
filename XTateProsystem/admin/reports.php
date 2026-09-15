@@ -81,6 +81,10 @@ include '../inc/header.php';
                             <i data-lucide="mail" style="width:17px;height:17px;"></i>
                             <span>Contacts</span>
                         </a>
+                        <a href="messages.php" class="db-nav-link">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
+                        </a>
                         <a href="users.php" class="db-nav-link">
                             <i data-lucide="users" style="width:17px;height:17px;"></i>
                             <span>Users</span>
@@ -99,10 +103,10 @@ include '../inc/header.php';
                 <!-- Header Banner -->
                 <div class="db-hero-banner">
                     <div>
-                        <h1 class="db-hero-title">Reported Listings & Sellers</h1>
-                        <p class="db-hero-desc">Monitor user grievances, inappropriate listings, and moderation flags</p>
+                        <h1 class="db-hero-title">Reported Listings &amp; Sellers</h1>
+                        <p class="db-hero-sub">Monitor user grievances, inappropriate listings, and moderation flags</p>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="db-hero-actions">
                         <span class="stat-pill stat-pill--total">
                             <i data-lucide="flag" style="width:14px;height:14px;"></i>
                             <span><?= count($reports) ?> Total Reports</span>

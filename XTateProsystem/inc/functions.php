@@ -45,21 +45,23 @@ function formatInquiryStatus($status) {
     $statusClass = '';
     $statusText = ucfirst($status);
     
-    switch ($status) {
+    switch (strtolower($status)) {
         case 'pending':
-            $statusClass = 'bg-warning';
+            $statusClass = 'db-status-pending';
             break;
         case 'approved':
-            $statusClass = 'bg-success';
+        case 'responded':
+            $statusClass = 'db-status-approved';
             break;
         case 'rejected':
-            $statusClass = 'bg-danger';
+        case 'closed':
+            $statusClass = 'db-status-closed';
             break;
         default:
-            $statusClass = 'bg-secondary';
+            $statusClass = 'db-status-pending';
     }
     
-    return '<span class="badge ' . $statusClass . '">' . $statusText . '</span>';
+    return '<span class="db-status-chip ' . $statusClass . '">' . htmlspecialchars($statusText) . '</span>';
 }
 
 // Get all inquiries for a seller

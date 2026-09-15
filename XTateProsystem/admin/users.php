@@ -61,6 +61,10 @@ include '../inc/header.php';
                             <i data-lucide="mail" style="width:17px;height:17px;"></i>
                             <span>Contacts</span>
                         </a>
+                        <a href="messages.php" class="db-nav-link">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
+                        </a>
                         <a href="users.php" class="db-nav-link active">
                             <i data-lucide="users" style="width:17px;height:17px;"></i>
                             <span>Users</span>
@@ -80,9 +84,9 @@ include '../inc/header.php';
                 <div class="db-hero-banner">
                     <div>
                         <h1 class="db-hero-title">User Management</h1>
-                        <p class="db-hero-desc">Directory of registered platform buyers and verified sellers</p>
+                        <p class="db-hero-sub">Directory of registered platform buyers and verified sellers</p>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="db-hero-actions">
                         <span class="stat-pill stat-pill--total">
                             <i data-lucide="users" style="width:14px;height:14px;"></i>
                             <span><?= count($users) ?> Total Accounts</span>
@@ -184,7 +188,7 @@ include '../inc/header.php';
 
                                                 <!-- Status -->
                                                 <td>
-                                                    <span class="status-chip badge <?= $status === 'active' ? 'status-chip--green' : 'status-chip--red' ?>">
+                                                    <span class="status-chip <?= $status === 'active' ? 'status-chip--green' : 'status-chip--red' ?>">
                                                         <?= ucfirst($status) ?>
                                                     </span>
                                                 </td>

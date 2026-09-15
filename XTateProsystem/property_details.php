@@ -1,7 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
 require_once 'inc/db.php';
 require_once 'inc/functions.php';
 require_once 'inc/auth.php';
@@ -337,7 +334,39 @@ include 'inc/header.php';
     background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 
-/* Map */
+/* Map & Location Details */
+.pd-loc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+}
+@media (max-width: 575.98px) {
+    .pd-loc-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.pd-loc-item {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.pd-loc-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.pd-loc-val {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #0F172A;
+}
 .pd-map { height: 340px; border-radius: 12px; overflow: hidden; border: 1px solid #E2E8F0; width: 100%; max-width: 100%; }
 
 /* ── Sidebar ── */
@@ -569,10 +598,15 @@ include 'inc/header.php';
                             <div class="pd-prop-addr">
                                 <i data-lucide="map-pin" style="width:15px;height:15px;color:#2563EB;flex-shrink:0;margin-top:2px;"></i>
                                 <span>
-                                    <?= htmlspecialchars($property['address']) ?>,
-                                    <?= htmlspecialchars($property['city']) ?>,
-                                    <?= htmlspecialchars($property['state']) ?>
-                                    <?= htmlspecialchars($property['zip_code'] ?? '') ?>
+                                    <?php 
+                                    $addressParts = array_filter([
+                                        $property['address'] ?? '',
+                                        $property['city'] ?? '',
+                                        $property['state'] ?? '',
+                                        $property['zip_code'] ?? ''
+                                    ]);
+                                    echo htmlspecialchars(implode(', ', $addressParts));
+                                    ?>
                                 </span>
                             </div>
 
@@ -597,19 +631,20 @@ include 'inc/header.php';
                                 <div class="pd-spec">
                                     <i data-lucide="maximize-2" style="width:20px;height:20px;color:#2563EB;"></i>
                                     <div>
-                                        <span class="pd-spec-val"><?= number_format($property['area'] ?? ($property['area_sqft'] ?? 0)) ?></span>
+                                        <?php 
+                                        $displayArea = (float)($property['area'] ?? $property['area_sqft'] ?? $property['sqft'] ?? 0);
+                                        ?>
+                                        <span class="pd-spec-val"><?= number_format($displayArea) ?></span>
                                         <span class="pd-spec-label">Sq. Ft.</span>
                                     </div>
                                 </div>
-                                <?php if (!empty($property['year_built']) && $property['year_built'] !== 'N/A'): ?>
                                 <div class="pd-spec">
                                     <i data-lucide="calendar" style="width:20px;height:20px;color:#2563EB;"></i>
                                     <div>
-                                        <span class="pd-spec-val"><?= htmlspecialchars($property['year_built']) ?></span>
+                                        <span class="pd-spec-val"><?= (!empty($property['year_built']) && $property['year_built'] !== '0' && $property['year_built'] !== 0 && $property['year_built'] !== 'N/A') ? htmlspecialchars($property['year_built']) : 'N/A' ?></span>
                                         <span class="pd-spec-label">Year Built</span>
                                     </div>
                                 </div>
-                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -621,25 +656,38 @@ include 'inc/header.php';
                                 <i data-lucide="file-text" style="width:16px;height:16px;color:#2563EB;"></i>
                                 Description
                             </div>
-                            <p class="pd-desc"><?= nl2br(htmlspecialchars($property['description'])) ?></p>
+                            <?php 
+                            $cleanDesc = $property['description'] ?? '';
+                            while (strpos($cleanDesc, '&amp;') !== false || strpos($cleanDesc, '&#') !== false) {
+                                $cleanDesc = html_entity_decode($cleanDesc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                            }
+                            ?>
+                            <p class="pd-desc"><?= nl2br(htmlspecialchars($cleanDesc, ENT_NOQUOTES, 'UTF-8')) ?></p>
                         </div>
                     </div>
 
-                    <!-- AMENITIES -->
+                    <!-- AMENITIES & HIGHLIGHTS -->
                     <?php
                     $amenities = [
-                        'garage'           => ['Garage',          'car'],
+                        'garage'           => ['Garage',          'warehouse'],
                         'air_conditioning' => ['Air Conditioning','wind'],
                         'swimming_pool'    => ['Swimming Pool',   'waves'],
-                        'backyard'         => ['Backyard',        'trees'],
-                        'gym'              => ['Gym',             'dumbbell'],
+                        'backyard'         => ['Backyard Garden', 'trees'],
+                        'gym'              => ['Fitness Gym',     'dumbbell'],
                         'fireplace'        => ['Fireplace',       'flame'],
                         'security_system'  => ['Security System', 'shield-check'],
-                        'washer_dryer'     => ['Washer / Dryer',  'shirt'],
+                        'washer_dryer'     => ['Washer / Dryer',  'refresh-cw'],
                     ];
                     $activeAmenities = [];
+                    $propAmenities = is_array($property['amenities'] ?? null) ? $property['amenities'] : [];
                     foreach ($amenities as $key => [$name, $icon]) {
-                        if (isset($property[$key]) && $property[$key] == 1) {
+                        $isActive = false;
+                        if (isset($property[$key]) && (int)$property[$key] === 1) {
+                            $isActive = true;
+                        } elseif (isset($propAmenities[$key]) && (int)$propAmenities[$key] === 1) {
+                            $isActive = true;
+                        }
+                        if ($isActive) {
                             $activeAmenities[] = ['name' => $name, 'icon' => $icon];
                         }
                     }
@@ -648,7 +696,7 @@ include 'inc/header.php';
                         <div class="pd-card-inner">
                             <div class="pd-card-title">
                                 <i data-lucide="sparkles" style="width:16px;height:16px;color:#2563EB;"></i>
-                                Amenities
+                                Amenities &amp; Highlights
                             </div>
                             <div class="pd-amenities-grid">
                                 <?php foreach ($activeAmenities as $am): ?>
@@ -656,7 +704,7 @@ include 'inc/header.php';
                                     <div class="pd-amenity-ico">
                                         <i data-lucide="<?= $am['icon'] ?>" style="width:15px;height:15px;color:#2563EB;"></i>
                                     </div>
-                                    <?= $am['name'] ?>
+                                    <?= htmlspecialchars($am['name']) ?>
                                 </div>
                                 <?php endforeach; ?>
                             </div>
@@ -664,12 +712,30 @@ include 'inc/header.php';
                     </div>
                     <?php endif; ?>
 
-                    <!-- MAP -->
+                    <!-- LOCATION DETAILS -->
                     <div class="pd-card">
                         <div class="pd-card-inner">
                             <div class="pd-card-title">
-                                <i data-lucide="map" style="width:16px;height:16px;color:#2563EB;"></i>
-                                Location
+                                <i data-lucide="map-pin" style="width:16px;height:16px;color:#2563EB;"></i>
+                                Location Details
+                            </div>
+                            <div class="pd-loc-grid">
+                                <div class="pd-loc-item">
+                                    <span class="pd-loc-label">Street Address</span>
+                                    <span class="pd-loc-val"><?= !empty($property['address']) ? htmlspecialchars($property['address']) : 'N/A' ?></span>
+                                </div>
+                                <div class="pd-loc-item">
+                                    <span class="pd-loc-label">City</span>
+                                    <span class="pd-loc-val"><?= !empty($property['city']) ? htmlspecialchars($property['city']) : 'N/A' ?></span>
+                                </div>
+                                <div class="pd-loc-item">
+                                    <span class="pd-loc-label">State / Country</span>
+                                    <span class="pd-loc-val"><?= !empty($property['state']) ? htmlspecialchars($property['state']) : 'N/A' ?></span>
+                                </div>
+                                <div class="pd-loc-item">
+                                    <span class="pd-loc-label">Zip / Postal Code</span>
+                                    <span class="pd-loc-val"><?= !empty($property['zip_code']) ? htmlspecialchars($property['zip_code']) : 'N/A' ?></span>
+                                </div>
                             </div>
                             <div id="propertyMap" class="pd-map"></div>
                         </div>
@@ -743,14 +809,19 @@ include 'inc/header.php';
                             </div>
 
                             <?php if (!empty($errors)): ?>
-                                <div class="alert alert-danger py-2 mb-3">
-                                    <?php foreach ($errors as $e): ?><div><?= htmlspecialchars($e) ?></div><?php endforeach; ?>
+                                <div class="modern-alert modern-alert--danger mb-3">
+                                    <i data-lucide="alert-circle" style="width:18px;height:18px;flex-shrink:0;"></i>
+                                    <div class="modern-alert__content">
+                                        <?php foreach ($errors as $e): ?><div><?= htmlspecialchars($e) ?></div><?php endforeach; ?>
+                                    </div>
                                 </div>
                             <?php endif; ?>
                             <?php if (!empty($success)): ?>
-                                <div class="alert alert-success py-2 mb-3">
-                                    <i data-lucide="check-circle" style="width:13px;height:13px;margin-right:4px;"></i>
-                                    <?= htmlspecialchars($success) ?>
+                                <div class="modern-alert modern-alert--success mb-3">
+                                    <i data-lucide="check-circle" style="width:18px;height:18px;flex-shrink:0;"></i>
+                                    <div class="modern-alert__content">
+                                        <?= htmlspecialchars($success) ?>
+                                    </div>
                                 </div>
                             <?php endif; ?>
 
@@ -785,6 +856,14 @@ include 'inc/header.php';
                     </div>
 
                     <!-- SHARE CARD -->
+                    <?php
+                    $shareProtocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
+                    $shareHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                    $shareUri = $_SERVER['REQUEST_URI'] ?? '';
+                    $propertyShareUrl = $shareProtocol . "://" . $shareHost . $shareUri;
+                    $encodedShareUrl = urlencode($propertyShareUrl);
+                    $encodedShareText = urlencode($property['title'] . ' | XTate Real Estate');
+                    ?>
                     <div class="pd-card" style="margin-bottom:0;">
                         <div class="pd-card-inner">
                             <div class="pd-card-title">
@@ -792,17 +871,14 @@ include 'inc/header.php';
                                 Share This Property
                             </div>
                             <div class="pd-share-row">
-                                <a href="https://www.facebook.com/" target="_blank" rel="noopener" class="pd-share-btn pd-share-fb" title="Facebook">
+                                <a href="https://www.facebook.com/sharer/sharer.php?u=<?= $encodedShareUrl ?>" target="_blank" rel="noopener" class="pd-share-btn pd-share-fb" title="Share on Facebook">
                                     <i class="fab fa-facebook-f"></i>
                                 </a>
-                                <a href="https://x.com/home" target="_blank" rel="noopener" class="pd-share-btn pd-share-tw" title="X / Twitter">
+                                <a href="https://twitter.com/intent/tweet?url=<?= $encodedShareUrl ?>&text=<?= $encodedShareText ?>" target="_blank" rel="noopener" class="pd-share-btn pd-share-tw" title="Share on X (Twitter)">
                                     <i class="fab fa-twitter"></i>
                                 </a>
-                                <a href="https://www.instagram.com/" target="_blank" rel="noopener" class="pd-share-btn pd-share-ig" title="Instagram">
-                                    <i class="fab fa-instagram"></i>
-                                </a>
-                                <a href="https://www.tiktok.com/" target="_blank" rel="noopener" class="pd-share-btn pd-share-tk" title="TikTok">
-                                    <i class="fa-brands fa-tiktok"></i>
+                                <a href="https://api.whatsapp.com/send?text=<?= $encodedShareText ?>%20<?= $encodedShareUrl ?>" target="_blank" rel="noopener" class="pd-share-btn" style="background:#25D366;color:#FFFFFF;" title="Share on WhatsApp">
+                                    <i class="fab fa-whatsapp"></i>
                                 </a>
                                 <button class="pd-share-btn pd-share-cp" title="Copy link" id="copyLinkBtn"
                                         onclick="navigator.clipboard.writeText(window.location.href).then(function(){

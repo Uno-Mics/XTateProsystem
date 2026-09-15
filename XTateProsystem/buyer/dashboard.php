@@ -43,6 +43,9 @@ $sql = "SELECT i.*, p.title as property_title, p.price, p.seller_id,
         ORDER BY i.created_at DESC LIMIT 5";
 $recentInquiries = fetchAll($sql, "i", [$buyerId]);
 
+$pageTitle = "Buyer Dashboard";
+$metaDescription = "Overview of your saved properties, inquiries, and messages on XTate.";
+
 include '../inc/header.php';
 ?>
 
@@ -804,7 +807,8 @@ include '../inc/header.php';
                                         <div class="db-pcard-specs">
                                             <span class="db-pcard-spec-item"><i data-lucide="bed" style="width:13px;height:13px;"></i> <?= $property['bedrooms'] ?> Beds</span>
                                             <span class="db-pcard-spec-item"><i data-lucide="bath" style="width:13px;height:13px;"></i> <?= $property['bathrooms'] ?> Baths</span>
-                                            <span class="db-pcard-spec-item"><i data-lucide="maximize-2" style="width:13px;height:13px;"></i> <?= number_format($property['area']) ?> sqft</span>
+                                            <?php $dashArea = (float)($property['area'] ?? $property['area_sqft'] ?? $property['sqft'] ?? 0); ?>
+                                            <span class="db-pcard-spec-item"><i data-lucide="maximize-2" style="width:13px;height:13px;"></i> <?= number_format($dashArea) ?> sqft</span>
                                         </div>
                                     </div>
                                 </div>

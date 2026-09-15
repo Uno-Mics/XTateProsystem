@@ -210,6 +210,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $conn->commit();
             $success = 'Property published successfully!';
+
+            // Sync new property to Cloud Firestore
+            if (function_exists('firestore_sync_property')) {
+                firestore_sync_property($propertyId);
+            }
             
             // Clear form
             $formData = [

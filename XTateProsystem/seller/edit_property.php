@@ -268,6 +268,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Refresh property images
             $propertyImages = fetchAll("SELECT * FROM property_images WHERE property_id = ? ORDER BY is_primary DESC, id ASC", "i", [$propertyId]);
+
+            // Sync updated property to Cloud Firestore
+            if (function_exists('firestore_sync_property')) {
+                firestore_sync_property($propertyId);
+            }
         } catch (Exception $e) {
             // Rollback transaction on error
             $conn->rollback();
@@ -432,7 +437,13 @@ include '../inc/header.php';
 
                                 <div class="form-group form-grid--full">
                                     <label for="description" class="form-label">Property Description <span class="req">*</span></label>
-                                    <textarea class="modern-textarea" id="description" name="description" rows="5" placeholder="Highlight key selling points, neighborhood atmosphere, views, finishes..." required><?= htmlspecialchars($property['description']) ?></textarea>
+                                    <?php 
+                                    $formDesc = $property['description'] ?? '';
+                                    while (strpos($formDesc, '&amp;') !== false || strpos($formDesc, '&#') !== false) {
+                                        $formDesc = html_entity_decode($formDesc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                                    }
+                                    ?>
+                                    <textarea class="modern-textarea" id="description" name="description" rows="5" placeholder="Highlight key selling points, neighborhood atmosphere, views, finishes..." required><?= htmlspecialchars($formDesc, ENT_QUOTES, 'UTF-8') ?></textarea>
                                 </div>
                             </div>
                         </div>
@@ -471,7 +482,7 @@ include '../inc/header.php';
                                     <label for="area" class="form-label">Area (sqft) <span class="req">*</span></label>
                                     <div class="input-with-icon">
                                         <i data-lucide="maximize-2" class="field-icon"></i>
-                                        <input type="number" class="modern-input has-icon" id="area" name="area" min="0" value="<?= htmlspecialchars($property['area']) ?>" placeholder="0" required>
+                                        <input type="number" step="any" class="modern-input has-icon" id="area" name="area" min="0" value="<?= htmlspecialchars($property['area']) ?>" placeholder="0" required>
                                     </div>
                                 </div>
 

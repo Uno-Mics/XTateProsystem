@@ -134,6 +134,10 @@ include '../inc/header.php';
                             <i data-lucide="mail" style="width:17px;height:17px;"></i>
                             <span>Contacts</span>
                         </a>
+                        <a href="messages.php" class="db-nav-link">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
+                        </a>
                         <a href="users.php" class="db-nav-link">
                             <i data-lucide="users" style="width:17px;height:17px;"></i>
                             <span>Users</span>
@@ -153,9 +157,9 @@ include '../inc/header.php';
                 <div class="db-hero-banner">
                     <div>
                         <h1 class="db-hero-title">Property Management</h1>
-                        <p class="db-hero-desc">Supervise listed real estate inventory, seller ownership, and publication status</p>
+                        <p class="db-hero-sub">Supervise listed real estate inventory, seller ownership, and publication status</p>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="db-hero-actions">
                         <span class="stat-pill stat-pill--total">
                             <i data-lucide="home" style="width:14px;height:14px;"></i>
                             <span><?= $totalProperties ?> Properties</span>

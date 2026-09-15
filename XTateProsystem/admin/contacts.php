@@ -66,6 +66,10 @@ include '../inc/header.php';
                                 <span class="db-nav-badge" style="background:#EFF6FF;color:#2563EB;"><?= $unreadContactsCount ?></span>
                             <?php endif; ?>
                         </a>
+                        <a href="messages.php" class="db-nav-link">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
+                        </a>
                         <a href="users.php" class="db-nav-link">
                             <i data-lucide="users" style="width:17px;height:17px;"></i>
                             <span>Users</span>
@@ -85,9 +89,9 @@ include '../inc/header.php';
                 <div class="db-hero-banner">
                     <div>
                         <h1 class="db-hero-title">Contact Messages</h1>
-                        <p class="db-hero-desc">Manage public inquiries, consultation requests, and customer communications</p>
+                        <p class="db-hero-sub">Manage public inquiries, consultation requests, and customer communications</p>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="db-hero-actions">
                         <span class="stat-pill stat-pill--total">
                             <i data-lucide="mail" style="width:14px;height:14px;"></i>
                             <span><?= count($contacts) ?> Total Messages</span>

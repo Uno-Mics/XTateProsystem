@@ -75,16 +75,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Pending reports count for sidebar badge
-$pendingReportsCount = 0;
+$pendingReports = 0;
 try {
     $prResult = fetchOne("SELECT COUNT(*) as cnt FROM reports WHERE status = 'pending'");
-    $pendingReportsCount = $prResult['cnt'] ?? 0;
+    $pendingReports = $prResult['cnt'] ?? 0;
 } catch (Exception $e) {}
 
-// Unread contacts count
+// Unread contacts count (uses correct `contacts` table)
 $unreadContactsCount = 0;
 try {
-    $ucResult = fetchOne("SELECT COUNT(*) as cnt FROM contact_messages WHERE status = 'unread'");
+    $ucResult = fetchOne("SELECT COUNT(*) as cnt FROM contacts WHERE status = 'unread'");
     $unreadContactsCount = $ucResult['cnt'] ?? 0;
 } catch (Exception $e) {}
 
@@ -111,22 +111,26 @@ include '../inc/header.php';
                 <div class="db-card">
                     <nav class="db-nav-group">
                         <a href="dashboard.php" class="db-nav-link">
-                            <i data-lucide="layout-grid" style="width:17px;height:17px;"></i>
+                            <i data-lucide="layout-dashboard" style="width:17px;height:17px;"></i>
                             <span>Dashboard</span>
                         </a>
                         <a href="reports.php" class="db-nav-link">
                             <i data-lucide="flag" style="width:17px;height:17px;"></i>
                             <span>Reports</span>
-                            <?php if ($pendingReportsCount > 0): ?>
-                                <span class="db-nav-badge"><?= $pendingReportsCount ?></span>
+                            <?php if ($pendingReports > 0): ?>
+                                <span class="db-nav-badge"><?= $pendingReports ?></span>
                             <?php endif; ?>
                         </a>
                         <a href="contacts.php" class="db-nav-link">
                             <i data-lucide="mail" style="width:17px;height:17px;"></i>
                             <span>Contacts</span>
                             <?php if ($unreadContactsCount > 0): ?>
-                                <span class="db-nav-badge"><?= $unreadContactsCount ?></span>
+                                <span class="db-nav-badge" style="background:#EFF6FF;color:#2563EB;"><?= $unreadContactsCount ?></span>
                             <?php endif; ?>
+                        </a>
+                        <a href="messages.php" class="db-nav-link">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
                         </a>
                         <a href="users.php" class="db-nav-link active">
                             <i data-lucide="users" style="width:17px;height:17px;"></i>
@@ -147,10 +151,10 @@ include '../inc/header.php';
                 <div class="db-hero-banner">
                     <div>
                         <h1 class="db-hero-title">Edit Seller Profile</h1>
-                        <p class="db-hero-desc">Modify business, agency, and account details for this registered seller</p>
+                        <p class="db-hero-sub">Modify business, agency, and account details for this registered seller</p>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <a href="users.php" class="btn-top-link">
+                    <div class="db-hero-actions">
+                        <a href="users.php" class="db-btn db-btn-secondary">
                             <i data-lucide="arrow-left" style="width:15px;height:15px;"></i>
                             <span>Back to Users</span>
                         </a>

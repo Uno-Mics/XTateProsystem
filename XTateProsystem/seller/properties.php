@@ -581,7 +581,8 @@ include '../inc/header.php';
                                     <div class="db-pcard-specs">
                                         <span class="db-pcard-spec-item"><i data-lucide="bed" style="width:13px;height:13px;"></i> <?= $property['bedrooms'] ?> bd</span>
                                         <span class="db-pcard-spec-item"><i data-lucide="bath" style="width:13px;height:13px;"></i> <?= $property['bathrooms'] ?> ba</span>
-                                        <span class="db-pcard-spec-item"><i data-lucide="maximize-2" style="width:13px;height:13px;"></i> <?= number_format($property['area']) ?> sqft</span>
+                                        <?php $sellerPropArea = (float)($property['area'] ?? $property['area_sqft'] ?? $property['sqft'] ?? 0); ?>
+                                        <span class="db-pcard-spec-item"><i data-lucide="maximize-2" style="width:13px;height:13px;"></i> <?= number_format($sellerPropArea) ?> sqft</span>
                                     </div>
 
                                     <div class="db-pcard-actions">

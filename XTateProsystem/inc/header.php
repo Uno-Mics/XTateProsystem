@@ -22,8 +22,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XTate Prosystem — Real Estate Platform</title>
-    
+    <title><?= isset($pageTitle) ? htmlspecialchars($pageTitle) . ' — XTate' : 'XTate Prosystem — Real Estate Platform' ?></title>
+    <?php if (!empty($metaDescription)): ?>
+    <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
+    <?php endif; ?>
     <!-- Favicon -->
     <link rel="shortcut icon" href="<?= $inc_dir ?>XTate-Logo.png" type="image/x-icon">
 
@@ -59,6 +61,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
          ═══════════════════════════════════════════════ -->
     <link rel="stylesheet" href="<?= $inc_dir ?>css/style.css">
     <link rel="stylesheet" href="<?= $inc_dir ?>css/responsive.css">
+    <?php if (strpos($_SERVER['PHP_SELF'], '/buyer/') !== false): ?>
+    <link rel="stylesheet" href="<?= $inc_dir ?>css/buyer-module.css">
+    <?php endif; ?>
 
     <!-- ═══════════════════════════════════════════════
          JAVASCRIPT — Core Frameworks (defer for performance)

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once '../inc/db.php';
 require_once '../inc/functions.php';
 require_once '../inc/auth.php';
@@ -47,397 +47,16 @@ if ($partnerId > 0) {
 $unviewedFavoritesCount = getUnviewedFavoritesCount($buyerId);
 $unreadCount = getUnreadMessagesCount($buyerId);
 
+$pageTitle = "Direct Messages";
+$metaDescription = "Real-time direct messaging with verified property sellers and listing agents on XTate.";
+
 include '../inc/header.php';
 ?>
 
-<div class="db-wrap">
-    <div class="db-container">
-        <div class="db-layout">
-
-            <!-- ══════════ LEFT: BUYER SIDEBAR ══════════ -->
-            <aside class="db-sidebar">
-                <div class="db-card db-profile-card">
-                    <div class="db-avatar">
-                        <?= strtoupper(substr($buyer['full_name'] ?? 'B', 0, 1)) ?>
-                    </div>
-                    <h3 class="db-user-name"><?= htmlspecialchars($buyer['full_name']) ?></h3>
-                    <span class="db-user-badge">
-                        <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Verified Buyer
-                    </span>
-                </div>
-
-                <div class="db-card">
-                    <nav class="db-nav-group">
-                        <a href="dashboard.php" class="db-nav-link">
-                            <i data-lucide="layout-dashboard" style="width:17px;height:17px;"></i>
-                            <span>Dashboard</span>
-                        </a>
-                        <a href="favorites.php" class="db-nav-link">
-                            <i data-lucide="heart" style="width:17px;height:17px;"></i>
-                            <span>My Favorites</span>
-                            <?php if ($unviewedFavoritesCount > 0): ?>
-                                <span class="db-nav-badge"><?= $unviewedFavoritesCount ?></span>
-                            <?php endif; ?>
-                        </a>
-                        <a href="messages.php" class="db-nav-link active">
-                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
-                            <span>Messages</span>
-                            <?php if ($unreadCount > 0): ?>
-                                <span class="db-nav-badge db-nav-badge--danger"><?= $unreadCount ?></span>
-                            <?php endif; ?>
-                        </a>
-                        <a href="../search.php" class="db-nav-link">
-                            <i data-lucide="search" style="width:17px;height:17px;"></i>
-                            <span>Find Properties</span>
-                        </a>
-                        <a href="profile.php" class="db-nav-link">
-                            <i data-lucide="user-cog" style="width:17px;height:17px;"></i>
-                            <span>Edit Profile</span>
-                        </a>
-                    </nav>
-                </div>
-            </aside>
-
-            <!-- ══════════ RIGHT: MAIN WORKSPACE ══════════ -->
-            <main class="db-main">
-
-                <!-- Header Banner -->
-                <div class="db-hero-banner">
-                    <div>
-                        <h1 class="db-hero-title">Direct Messages</h1>
-                        <p class="db-hero-desc">Real-time conversations with verified property sellers and listing agents</p>
-                    </div>
-                    <?php if ($unreadCount > 0): ?>
-                        <span class="unread-hero-pill">
-                            <i data-lucide="bell" style="width:14px;height:14px;"></i>
-                            <span><?= $unreadCount ?> Unread <?= $unreadCount === 1 ? 'Message' : 'Messages' ?></span>
-                        </span>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Chat Bento Container -->
-                <div class="db-card chat-card-wrapper">
-                    <div class="messaging-container">
-
-                        <!-- Left Column: Partners List -->
-                        <div class="partners-list">
-                            <div class="partners-header">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <h2 class="partners-title">Conversations</h2>
-                                    <span class="partners-count-badge"><?= count($partners) ?></span>
-                                </div>
-                            </div>
-
-                            <div class="partners-body">
-                                <?php if (empty($partners)): ?>
-                                    <div class="partners-empty">
-                                        <div class="empty-icon-sm">
-                                            <i data-lucide="messages-square"></i>
-                                        </div>
-                                        <div class="empty-title">No conversations yet</div>
-                                        <div class="empty-desc">Reach out to sellers from property details pages to start a conversation.</div>
-                                        <a href="../search.php" class="btn-explore-link mt-2">
-                                            Find Properties <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
-                                        </a>
-                                    </div>
-                                <?php else: ?>
-                                    <?php foreach ($partners as $partner): 
-                                        $sql = "SELECT * FROM users WHERE id = ?";
-                                        $partnerInfo = fetchOne($sql, "i", [$partner['partner_id']]);
-                                        
-                                        if (!$partnerInfo) continue;
-                                        
-                                        // Get unread count
-                                        $sql = "SELECT COUNT(*) as count FROM messages 
-                                                WHERE sender_id = ? AND receiver_id = ? AND is_read = 0";
-                                        $result = fetchOne($sql, "ii", [$partner['partner_id'], $buyerId]);
-                                        $partnerUnreadCount = $result ? $result['count'] : 0;
-                                        
-                                        $isActive = $partnerId == $partner['partner_id'];
-                                        $initial = strtoupper(substr($partnerInfo['full_name'], 0, 1));
-                                    ?>
-                                        <a href="messages.php?user=<?= $partner['partner_id'] ?>" class="partner-item <?= $isActive ? 'active' : '' ?>">
-                                            <div class="partner-avatar">
-                                                <div class="avatar-circle">
-                                                    <?= $initial ?>
-                                                </div>
-                                            </div>
-                                            <div class="partner-info">
-                                                <div class="partner-name-row">
-                                                    <span class="partner-name"><?= htmlspecialchars($partnerInfo['full_name']) ?></span>
-                                                    <span class="partner-role-pill"><?= ucfirst(htmlspecialchars($partnerInfo['role'])) ?></span>
-                                                </div>
-                                                <div class="partner-sub-row">
-                                                    <span class="partner-email-snippet"><?= htmlspecialchars($partnerInfo['email']) ?></span>
-                                                    <?php if ($partnerUnreadCount > 0): ?>
-                                                        <span class="unread-badge"><?= $partnerUnreadCount ?></span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </a>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-
-                        <!-- Right Column: Messages Area -->
-                        <div class="messages-area">
-                            <?php if (!$partnerData): ?>
-                                <div class="message-placeholder">
-                                    <div class="placeholder-icon-circle">
-                                        <i data-lucide="message-square-dashed"></i>
-                                    </div>
-                                    <h3>Select a conversation</h3>
-                                    <p>Choose a seller from the left list to view your chat history and reply in real-time.</p>
-                                </div>
-                            <?php else: ?>
-                                <!-- Message Header -->
-                                <div class="message-header">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div class="avatar-circle avatar-circle--active">
-                                            <?= strtoupper(substr($partnerData['full_name'], 0, 1)) ?>
-                                        </div>
-                                        <div>
-                                            <h3 class="active-chat-name"><?= htmlspecialchars($partnerData['full_name']) ?></h3>
-                                            <div class="active-chat-meta">
-                                                <span class="online-indicator"></span>
-                                                <span><?= ucfirst(htmlspecialchars($partnerData['role'])) ?></span>
-                                                <span class="meta-dot">&bull;</span>
-                                                <span><?= htmlspecialchars($partnerData['email']) ?></span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Message Body Stream -->
-                                <div class="message-body" id="messageContainer">
-                                    <?php if (empty($messages)): ?>
-                                        <div class="message-stream-empty">
-                                            <div class="empty-icon-sm">
-                                                <i data-lucide="message-circle"></i>
-                                            </div>
-                                            <div class="empty-title">No messages yet</div>
-                                            <div class="empty-desc">Send a message below to start your conversation with <?= htmlspecialchars($partnerData['full_name']) ?>.</div>
-                                        </div>
-                                    <?php else: ?>
-                                        <?php foreach ($messages as $message): 
-                                            $isSender = $message['sender_id'] == $buyerId;
-                                            $messageClass = $isSender ? 'message-sent' : 'message-received';
-                                        ?>
-                                            <div class="message-item <?= $messageClass ?>" data-message-id="<?= $message['id'] ?>">
-                                                <div class="message-content">
-                                                    <p><?= nl2br(htmlspecialchars($message['message'])) ?></p>
-                                                    <small class="message-time"><?= formatMessageTime($message['created_at']) ?></small>
-                                                </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </div>
-
-                                <!-- Message Footer Composer -->
-                                <div class="message-footer">
-                                    <form id="messageForm" method="POST" action="../api/messages.php">
-                                        <input type="hidden" name="action" value="send_message">
-                                        <input type="hidden" name="receiver_id" value="<?= $partnerData['id'] ?>">
-
-                                        <div class="composer-bar">
-                                            <textarea class="composer-input" name="message" placeholder="Type a message..." rows="1" required></textarea>
-                                            <button type="submit" class="composer-send-btn" title="Send Message">
-                                                <i data-lucide="send"></i>
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-
-                    </div>
-                </div>
-
-            </main>
-        </div>
-    </div>
-</div>
-
 <style>
-/* ── Design Tokens & Base Layout ── */
-.db-wrap {
-    background: #F8FAFC;
-    min-height: 100vh;
-    padding: 30px 0 70px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #0F172A;
-    overflow-x: hidden;
-}
-
-.db-container {
-    max-width: 1240px;
-    margin: 0 auto;
-    padding: 0 16px;
-    width: 100%;
-}
-
-.db-layout {
-    display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-}
-
-@media (max-width: 991px) {
-    .db-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ── Sidebar ── */
-.db-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.db-card {
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-}
-
-.db-profile-card {
-    padding: 22px;
-    text-align: center;
-    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
-}
-
-.db-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    margin: 0 auto 12px;
-    background: linear-gradient(135deg, #2563EB, #06B6D4);
-    color: #fff;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
-}
-
-.db-user-name {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #0F172A;
-    margin: 0 0 4px;
-}
-
-.db-user-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #059669;
-    background: #ECFDF5;
-    padding: 3px 10px;
-    border-radius: 100px;
-}
-
-/* Nav links */
-.db-nav-group {
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.db-nav-link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    color: #64748B;
-    font-size: 0.88rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all .15s ease;
-}
-
-.db-nav-link i, .db-nav-link svg {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-}
-
-.db-nav-link:hover {
-    background: #F1F5F9;
-    color: #0F172A;
-}
-
-.db-nav-link.active {
-    background: #EFF6FF;
-    color: #2563EB;
-    font-weight: 600;
-}
-
-.db-nav-badge {
-    margin-left: auto;
-    font-size: 0.7rem;
-    font-weight: 700;
-    background: #EFF6FF;
-    color: #2563EB;
-    padding: 2px 8px;
-    border-radius: 100px;
-}
-.db-nav-badge--danger {
-    background: #FEE2E2;
-    color: #DC2626;
-}
-
-/* ── Main Workspace ── */
-.db-main {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-width: 0;
-}
-
-/* Header Banner */
-.db-hero-banner {
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-radius: 16px;
-    padding: 24px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-}
-
-.db-hero-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.45rem;
-    font-weight: 800;
-    color: #0F172A;
-    margin: 0 0 4px;
-    letter-spacing: -0.02em;
-}
-
-.db-hero-desc {
-    color: #64748B;
-    font-size: 0.88rem;
-    margin: 0;
-}
-
+/* ── Messages-Page–Specific Styles ──
+   Shared tokens (db-wrap, db-layout, db-sidebar, db-card, etc.)
+   are served by css/buyer-module.css loaded via inc/header.php */
 .unread-hero-pill {
     display: inline-flex;
     align-items: center;
@@ -450,7 +69,7 @@ include '../inc/header.php';
     color: #DC2626;
 }
 
-/* ── Chat Container ── */
+/* â”€â”€ Chat Container â”€â”€ */
 .chat-card-wrapper {
     height: 640px;
     display: flex;
@@ -881,6 +500,217 @@ include '../inc/header.php';
     height: 17px;
 }
 </style>
+
+
+<div class="db-wrap">
+    <div class="db-container">
+        <div class="db-layout">
+
+            <!-- â•â•â•â•â•â•â•â•â•â• LEFT: BUYER SIDEBAR â•â•â•â•â•â•â•â•â•â• -->
+            <aside class="db-sidebar">
+                <div class="db-card db-profile-card">
+                    <div class="db-avatar">
+                        <?= strtoupper(substr($buyer['full_name'] ?? 'B', 0, 1)) ?>
+                    </div>
+                    <h3 class="db-user-name"><?= htmlspecialchars($buyer['full_name']) ?></h3>
+                    <span class="db-user-badge">
+                        <i data-lucide="shield-check" style="width:13px;height:13px;"></i> Verified Buyer
+                    </span>
+                </div>
+
+                <div class="db-card">
+                    <nav class="db-nav-group">
+                        <a href="dashboard.php" class="db-nav-link">
+                            <i data-lucide="layout-dashboard" style="width:17px;height:17px;"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="favorites.php" class="db-nav-link">
+                            <i data-lucide="heart" style="width:17px;height:17px;"></i>
+                            <span>My Favorites</span>
+                            <?php if ($unviewedFavoritesCount > 0): ?>
+                                <span class="db-nav-badge"><?= $unviewedFavoritesCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <a href="messages.php" class="db-nav-link active">
+                            <i data-lucide="message-square" style="width:17px;height:17px;"></i>
+                            <span>Messages</span>
+                            <?php if ($unreadCount > 0): ?>
+                                <span class="db-nav-badge db-nav-badge--danger"><?= $unreadCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <a href="../search.php" class="db-nav-link">
+                            <i data-lucide="search" style="width:17px;height:17px;"></i>
+                            <span>Find Properties</span>
+                        </a>
+                        <a href="profile.php" class="db-nav-link">
+                            <i data-lucide="user-cog" style="width:17px;height:17px;"></i>
+                            <span>Edit Profile</span>
+                        </a>
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- â•â•â•â•â•â•â•â•â•â• RIGHT: MAIN WORKSPACE â•â•â•â•â•â•â•â•â•â• -->
+            <main class="db-main">
+
+                <!-- Header Banner -->
+                <div class="db-hero-banner">
+                    <div>
+                        <h1 class="db-hero-title">Direct Messages</h1>
+                        <p class="db-hero-sub">Real-time conversations with verified property sellers and listing agents</p>
+                    </div>
+                    <?php if ($unreadCount > 0): ?>
+                        <span class="unread-hero-pill">
+                            <i data-lucide="bell" style="width:14px;height:14px;"></i>
+                            <span><?= $unreadCount ?> Unread <?= $unreadCount === 1 ? 'Message' : 'Messages' ?></span>
+                        </span>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Chat Bento Container -->
+                <div class="db-card chat-card-wrapper">
+                    <div class="messaging-container">
+
+                        <!-- Left Column: Partners List -->
+                        <div class="partners-list">
+                            <div class="partners-header">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <h2 class="partners-title">Conversations</h2>
+                                    <span class="partners-count-badge"><?= count($partners) ?></span>
+                                </div>
+                            </div>
+
+                            <div class="partners-body">
+                                <?php if (empty($partners)): ?>
+                                    <div class="partners-empty">
+                                        <div class="empty-icon-sm">
+                                            <i data-lucide="messages-square"></i>
+                                        </div>
+                                        <div class="empty-title">No conversations yet</div>
+                                        <div class="empty-desc">Reach out to sellers from property details pages to start a conversation.</div>
+                                        <a href="../search.php" class="btn-explore-link mt-2">
+                                            Find Properties <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
+                                        </a>
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($partners as $partner): 
+                                        $sql = "SELECT * FROM users WHERE id = ?";
+                                        $partnerInfo = fetchOne($sql, "i", [$partner['partner_id']]);
+                                        
+                                        if (!$partnerInfo) continue;
+                                        
+                                        // Get unread count
+                                        $sql = "SELECT COUNT(*) as count FROM messages 
+                                                WHERE sender_id = ? AND receiver_id = ? AND is_read = 0";
+                                        $result = fetchOne($sql, "ii", [$partner['partner_id'], $buyerId]);
+                                        $partnerUnreadCount = $result ? $result['count'] : 0;
+                                        
+                                        $isActive = $partnerId == $partner['partner_id'];
+                                        $initial = strtoupper(substr($partnerInfo['full_name'], 0, 1));
+                                    ?>
+                                        <a href="messages.php?user=<?= $partner['partner_id'] ?>" class="partner-item <?= $isActive ? 'active' : '' ?>">
+                                            <div class="partner-avatar">
+                                                <div class="avatar-circle">
+                                                    <?= $initial ?>
+                                                </div>
+                                            </div>
+                                            <div class="partner-info">
+                                                <div class="partner-name-row">
+                                                    <span class="partner-name"><?= htmlspecialchars($partnerInfo['full_name']) ?></span>
+                                                    <span class="partner-role-pill"><?= ucfirst(htmlspecialchars($partnerInfo['role'])) ?></span>
+                                                </div>
+                                                <div class="partner-sub-row">
+                                                    <span class="partner-email-snippet"><?= htmlspecialchars($partnerInfo['email']) ?></span>
+                                                    <?php if ($partnerUnreadCount > 0): ?>
+                                                        <span class="unread-badge"><?= $partnerUnreadCount ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Messages Area -->
+                        <div class="messages-area">
+                            <?php if (!$partnerData): ?>
+                                <div class="message-placeholder">
+                                    <div class="placeholder-icon-circle">
+                                        <i data-lucide="message-square-dashed"></i>
+                                    </div>
+                                    <h3>Select a conversation</h3>
+                                    <p>Choose a seller from the left list to view your chat history and reply in real-time.</p>
+                                </div>
+                            <?php else: ?>
+                                <!-- Message Header -->
+                                <div class="message-header">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="avatar-circle avatar-circle--active">
+                                            <?= strtoupper(substr($partnerData['full_name'], 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <h3 class="active-chat-name"><?= htmlspecialchars($partnerData['full_name']) ?></h3>
+                                            <div class="active-chat-meta">
+                                                <span class="online-indicator"></span>
+                                                <span><?= ucfirst(htmlspecialchars($partnerData['role'])) ?></span>
+                                                <span class="meta-dot">&bull;</span>
+                                                <span><?= htmlspecialchars($partnerData['email']) ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Message Body Stream -->
+                                <div class="message-body" id="messageContainer">
+                                    <?php if (empty($messages)): ?>
+                                        <div class="message-stream-empty">
+                                            <div class="empty-icon-sm">
+                                                <i data-lucide="message-circle"></i>
+                                            </div>
+                                            <div class="empty-title">No messages yet</div>
+                                            <div class="empty-desc">Send a message below to start your conversation with <?= htmlspecialchars($partnerData['full_name']) ?>.</div>
+                                        </div>
+                                    <?php else: ?>
+                                        <?php foreach ($messages as $message): 
+                                            $isSender = $message['sender_id'] == $buyerId;
+                                            $messageClass = $isSender ? 'message-sent' : 'message-received';
+                                        ?>
+                                            <div class="message-item <?= $messageClass ?>" data-message-id="<?= $message['id'] ?>">
+                                                <div class="message-content">
+                                                    <p><?= nl2br(htmlspecialchars($message['message'])) ?></p>
+                                                    <small class="message-time"><?= formatMessageTime($message['created_at']) ?></small>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- Message Footer Composer -->
+                                <div class="message-footer">
+                                    <form id="messageForm" method="POST" action="../api/messages.php">
+                                        <input type="hidden" name="action" value="send_message">
+                                        <input type="hidden" name="receiver_id" value="<?= $partnerData['id'] ?>">
+
+                                        <div class="composer-bar">
+                                            <textarea class="composer-input" name="message" placeholder="Type a message..." rows="1" required></textarea>
+                                            <button type="submit" class="composer-send-btn" title="Send Message">
+                                                <i data-lucide="send"></i>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+</div>
+
 
 <script src="../js/messaging.js"></script>
 <script>
